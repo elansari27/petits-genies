@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.KidsLearn" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#FF6C4BFF</item>
+        <item name="android:navigationBarColor">#FF6C4BFF</item>
+        <item name="android:windowBackground">#FFFFF4E0</item>
+    </style>
+</resources>

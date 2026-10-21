@@ -1,0 +1,630 @@
+package com.kidslearn.app
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+
+// ---------- Couleurs & thème ----------
+
+private val Purple = Color(0xFF6C4BFF)
+private val Pink = Color(0xFFFF5FA2)
+private val Orange = Color(0xFFFF9F43)
+private val Green = Color(0xFF2ED573)
+private val Blue = Color(0xFF1E90FF)
+private val Yellow = Color(0xFFFFC933)
+private val Cream = Color(0xFFFFF4E0)
+
+private val tileColors = listOf(Pink, Orange, Green, Blue, Purple, Yellow)
+
+@Composable
+fun KidsTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = lightColorScheme(primary = Purple, background = Cream),
+        content = content
+    )
+}
+
+private fun t(lang: Lang, fr: String, ar: String): String = when (lang) {
+    Lang.FR -> fr
+    Lang.AR -> ar
+    Lang.MIX -> "$fr\n$ar"
+}
+
+// ---------- Briques réutilisables ----------
+
+/** Bouton/tuile qui rebondit quand on appuie dessus. */
+@Composable
+fun BouncyBox(
+    modifier: Modifier = Modifier,
+    color: Color,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(28.dp),
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (pressed) 0.90f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "press"
+    )
+    Box(
+        modifier = modifier
+            .scale(scale)
+            .background(color, shape)
+            .clickable(interactionSource = source, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { content() }
+}
+
+@Composable
+fun GameBackground(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFFFFF4E0), Color(0xFFFFE0F0))))
+            .statusBarsPadding()
+            .navigationBarsPadding()
+    ) { content() }
+}
+
+@Composable
+fun TopBar(title: String, stars: Int?, onBack: (() -> Unit)?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (onBack != null) {
+            BouncyBox(
+                modifier = Modifier.size(64.dp),
+                color = Purple,
+                shape = CircleShape,
+                onClick = onBack
+            ) { Text("🏠", fontSize = 30.sp) }
+        } else {
+            Spacer(Modifier.size(64.dp))
+        }
+        Text(
+            text = title,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp),
+            textAlign = TextAlign.Center,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF3B2A8C)
+        )
+        if (stars != null) {
+            Box(
+                modifier = Modifier
+                    .background(Yellow, RoundedCornerShape(24.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) { Text("⭐ $stars", fontSize = 22.sp, fontWeight = FontWeight.Bold) }
+        } else {
+            Spacer(Modifier.size(64.dp))
+        }
+    }
+}
+
+/** Petit personnage qui rebondit en continu. */
+@Composable
+fun Mascot(emoji: String, size: Int = 90) {
+    val tr = rememberInfiniteTransition(label = "mascot")
+    val dy by tr.animateFloat(
+        initialValue = 0f,
+        targetValue = -18f,
+        animationSpec = infiniteRepeatable(tween(600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "dy"
+    )
+    Text(emoji, fontSize = size.sp, modifier = Modifier.graphicsLayer { translationY = dy })
+}
+
+// ---------- Accueil ----------
+
+@Composable
+fun HomeScreen(
+    stars: Int,
+    musicOn: Boolean,
+    onToggleMusic: () -> Unit,
+    onPickLang: (Lang) -> Unit
+) {
+    GameBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Box(
+                    modifier = Modifier
+                        .background(Yellow, RoundedCornerShape(24.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) { Text("⭐ $stars", fontSize = 22.sp, fontWeight = FontWeight.Bold) }
+                BouncyBox(
+                    modifier = Modifier.size(56.dp),
+                    color = if (musicOn) Green else Color.LightGray,
+                    shape = CircleShape,
+                    onClick = onToggleMusic
+                ) { Text(if (musicOn) "🎵" else "🔇", fontSize = 28.sp) }
+            }
+            Spacer(Modifier.height(8.dp))
+            Mascot("🦄", 110)
+            Text(
+                "Petits Génies",
+                fontSize = 38.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Purple
+            )
+            Text(
+                "عباقرة صغار",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Pink
+            )
+            Spacer(Modifier.height(28.dp))
+
+            val options = listOf(
+                Triple(Lang.FR, "🇫🇷  Français", Blue),
+                Triple(Lang.AR, "العربية  🌙", Green),
+                Triple(Lang.MIX, "Français + العربية", Orange)
+            )
+            options.forEach { (lang, label, color) ->
+                BouncyBox(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp)
+                        .padding(vertical = 6.dp),
+                    color = color,
+                    onClick = { onPickLang(lang) }
+                ) {
+                    Text(label, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+// ---------- Menu ----------
+
+@Composable
+fun MenuScreen(lang: Lang, stars: Int, onBack: () -> Unit, onPick: (Screen) -> Unit) {
+    val entries = listOf(
+        Triple(Screen.LEARN_LETTERS, "🔤", t(lang, "Les lettres", "الحروف")),
+        Triple(Screen.LEARN_NUMBERS, "🔢", t(lang, "Les chiffres", "الأرقام")),
+        Triple(Screen.QUIZ_LETTERS, "🎯", t(lang, "Jeu des lettres", "لعبة الحروف")),
+        Triple(Screen.QUIZ_NUMBERS, "🎲", t(lang, "Jeu des chiffres", "لعبة الأرقام")),
+        Triple(Screen.COUNT, "🍎", t(lang, "Compter", "العدّ"))
+    )
+    GameBackground {
+        Column(Modifier.fillMaxSize()) {
+            TopBar(title = t(lang, "On joue !", "هيا نلعب!"), stars = stars, onBack = onBack)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                entries.forEachIndexed { index, (screen, emoji, label) ->
+                    BouncyBox(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        color = tileColors[index % tileColors.size],
+                        onClick = { onPick(screen) }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(emoji, fontSize = 44.sp)
+                            Spacer(Modifier.size(14.dp))
+                            Text(
+                                label,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+// ---------- Apprendre (cartes) ----------
+
+@Composable
+fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -> Unit) {
+    var index by remember { mutableIntStateOf(0) }
+    val item = items[index]
+    val pop = remember { Animatable(1f) }
+
+    LaunchedEffect(index) {
+        sound.speak(item.spoken, item.lang)
+        pop.snapTo(0.6f)
+        pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+    }
+
+    GameBackground {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            TopBar(title = "${index + 1} / ${items.size}", stars = null, onBack = onBack)
+            Spacer(Modifier.height(8.dp))
+            BouncyBox(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+                color = tileColors[index % tileColors.size],
+                shape = RoundedCornerShape(40.dp),
+                onClick = {
+                    sound.playClick()
+                    sound.speak(item.spoken, item.lang)
+                }
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(item.symbol, fontSize = 150.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    Mascot(item.emoji, 90)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        item.word,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("🔊", fontSize = 36.sp)
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BouncyBox(
+                    modifier = Modifier.size(88.dp),
+                    color = Purple,
+                    shape = CircleShape,
+                    onClick = {
+                        sound.playClick()
+                        index = (index - 1 + items.size) % items.size
+                    }
+                ) { Text("⬅️", fontSize = 40.sp) }
+                BouncyBox(
+                    modifier = Modifier.size(88.dp),
+                    color = Purple,
+                    shape = CircleShape,
+                    onClick = {
+                        sound.playClick()
+                        index = (index + 1) % items.size
+                    }
+                ) { Text("➡️", fontSize = 40.sp) }
+            }
+        }
+    }
+}
+
+// ---------- Jeu : trouve la lettre / le chiffre ----------
+
+private fun praise(lang: Lang): String = when (lang) {
+    Lang.FR -> Content.praiseFr.random()
+    Lang.AR -> Content.praiseAr.random()
+    Lang.MIX -> (Content.praiseFr + Content.praiseAr).random()
+}
+
+private fun retry(lang: Lang): String = when (lang) {
+    Lang.FR -> Content.retryFr.random()
+    Lang.AR -> Content.retryAr.random()
+    Lang.MIX -> (Content.retryFr + Content.retryAr).random()
+}
+
+@Composable
+fun QuizScreen(
+    pool: List<Item>,
+    lang: Lang,
+    sound: SoundManager,
+    stars: Int,
+    onStar: () -> Unit,
+    onBack: () -> Unit
+) {
+    var round by remember { mutableIntStateOf(0) }
+    val target = remember(round) { pool.random() }
+    val choices = remember(round) {
+        (pool.filter { it.lang == target.lang && it.symbol != target.symbol }
+            .shuffled().take(3) + target).shuffled()
+    }
+    var feedback by remember(round) { mutableStateOf("") }
+    var solved by remember(round) { mutableStateOf(false) }
+    var wrongSymbol by remember(round) { mutableStateOf<String?>(null) }
+    val shake = remember { Animatable(0f) }
+
+    LaunchedEffect(round) {
+        delay(300)
+        sound.speak(target.spoken, target.lang)
+    }
+
+    LaunchedEffect(wrongSymbol) {
+        if (wrongSymbol != null) {
+            for (i in 0 until 3) {
+                shake.animateTo(16f, tween(50)); shake.animateTo(-16f, tween(50))
+            }
+            shake.animateTo(0f, tween(50))
+        }
+    }
+
+    GameBackground {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            TopBar(
+                title = t(lang, "Écoute et touche !", "اسمع واختر!"),
+                stars = stars,
+                onBack = onBack
+            )
+            BouncyBox(
+                modifier = Modifier.size(width = 200.dp, height = 90.dp),
+                color = Orange,
+                onClick = { sound.speak(target.spoken, target.lang) }
+            ) { Text("🔊  ?", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, color = Color.White) }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                feedback,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (solved) Green else Pink,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.height(44.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                choices.chunked(2).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowItems.forEach { c ->
+                            val isWrong = wrongSymbol == c.symbol
+                            BouncyBox(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxSize()
+                                    .graphicsLayer { if (isWrong) translationX = shake.value },
+                                color = when {
+                                    solved && c.symbol == target.symbol -> Green
+                                    isWrong -> Color.Gray
+                                    else -> tileColors[(c.symbol.hashCode() and 0xFF) % tileColors.size]
+                                },
+                                onClick = {
+                                    if (solved) return@BouncyBox
+                                    if (c.symbol == target.symbol) {
+                                        solved = true
+                                        feedback = "🎉 ${praise(lang)}"
+                                        sound.playSuccess()
+                                        sound.speak(praise(lang).let { p ->
+                                            if (target.lang == Lang.AR) Content.praiseAr.random() else p
+                                        }, target.lang)
+                                        onStar()
+                                    } else {
+                                        wrongSymbol = c.symbol
+                                        feedback = retry(lang)
+                                        sound.playError()
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    c.symbol,
+                                    fontSize = 90.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Passer à la question suivante après un succès
+    LaunchedEffect(solved) {
+        if (solved) {
+            delay(1800)
+            round += 1
+        }
+    }
+}
+
+// ---------- Jeu : compter ----------
+
+@Composable
+fun CountScreen(
+    lang: Lang,
+    sound: SoundManager,
+    stars: Int,
+    onStar: () -> Unit,
+    onBack: () -> Unit
+) {
+    var round by remember { mutableIntStateOf(0) }
+    val count = remember(round) { (1..10).random() }
+    val emoji = remember(round) { Content.countEmojis.random() }
+    val roundLang = remember(round) {
+        when (lang) {
+            Lang.MIX -> listOf(Lang.FR, Lang.AR).random()
+            else -> lang
+        }
+    }
+    val numberItems = if (roundLang == Lang.AR) Content.arDigitItems else Content.frDigits
+    val choices = remember(round) {
+        ((1..10).filter { it != count }.shuffled().take(2) + count).shuffled()
+    }
+    var solved by remember(round) { mutableStateOf(false) }
+    var feedback by remember(round) { mutableStateOf("") }
+
+    val question = if (roundLang == Lang.AR) "كم عددها؟" else "Combien y en a-t-il ?"
+
+    LaunchedEffect(round) {
+        delay(300)
+        sound.speak(question, roundLang)
+    }
+    LaunchedEffect(solved) {
+        if (solved) {
+            delay(2200)
+            round += 1
+        }
+    }
+
+    GameBackground {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            TopBar(title = t(lang, "On compte !", "هيا نعدّ!"), stars = stars, onBack = onBack)
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(Color.White, RoundedCornerShape(32.dp))
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    (0 until count).toList().chunked(5).forEach { rowIdx ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            rowIdx.forEach { i ->
+                                CountItem(emoji, i, onTap = {
+                                    sound.playStar()
+                                    val n = i + 1
+                                    sound.speak(
+                                        if (roundLang == Lang.AR) Content.arDigitItems[n].spoken
+                                        else Content.frDigits[n].spoken,
+                                        roundLang
+                                    )
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+            Text(
+                if (feedback.isEmpty()) question else feedback,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (solved) Green else Purple,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 10.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                choices.forEach { n ->
+                    BouncyBox(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                        color = if (solved && n == count) Green else tileColors[n % tileColors.size],
+                        onClick = {
+                            if (solved) return@BouncyBox
+                            if (n == count) {
+                                solved = true
+                                feedback = "🎉 ${praise(roundLang)}"
+                                sound.playSuccess()
+                                onStar()
+                            } else {
+                                feedback = retry(roundLang)
+                                sound.playError()
+                            }
+                        }
+                    ) {
+                        Text(
+                            numberItems[n].symbol,
+                            fontSize = 56.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Un objet à compter : apparaît avec une petite animation, rebondit au toucher. */
+@Composable
+private fun CountItem(emoji: String, index: Int, onTap: () -> Unit) {
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        delay(index * 90L)
+        appear.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+    }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Text(
+        emoji,
+        fontSize = 48.sp,
+        modifier = Modifier
+            .graphicsLayer {
+                val s = appear.value * (if (pressed) 1.3f else 1f)
+                scaleX = s; scaleY = s
+            }
+            .clickable(interactionSource = source, indication = null, onClick = onTap)
+            .padding(4.dp)
+    )
+}
