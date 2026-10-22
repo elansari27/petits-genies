@@ -119,3 +119,96 @@ object Content {
     val retryFr = listOf("Essaie encore !", "Presque ! Réessaie !")
     val retryAr = listOf("حاول مرة أخرى!", "قريب! جرّب ثانية!")
 }
+
+// ---------- Aides ----------
+
+/** Ce qu'on dit quand l'enfant touche une lettre ou un chiffre (court, sans le mot-exemple). */
+fun Item.shortSpoken(): String = when {
+    emoji == "🔢" -> spoken
+    lang == Lang.AR -> spoken.substringBefore('.')
+    else -> symbol
+}
+
+fun isArabicLetter(symbol: String): Boolean =
+    symbol.isNotEmpty() && symbol[0] in 'ء'..'ي'
+
+/** Formes d'une lettre arabe : isolée, finale, médiane, initiale (le ZWJ force la forme de liaison). */
+fun arabicForms(symbol: String): List<String> {
+    val base = symbol.replace("ـ", "")
+    val zwj = "‍"
+    return listOf(base, zwj + base, zwj + base + zwj, base + zwj)
+}
+
+fun praiseFor(lang: Lang): String =
+    if (lang == Lang.AR) Content.praiseAr.random() else Content.praiseFr.random()
+
+// ---------- Autocollants ----------
+
+data class Sticker(val id: String, val emoji: String, val price: Int)
+
+object Stickers {
+    val all = listOf(
+        Sticker("dog", "🐶", 2), Sticker("cat", "🐱", 2), Sticker("panda", "🐼", 3),
+        Sticker("lion", "🦁", 3), Sticker("unicorn", "🦄", 4), Sticker("butterfly", "🦋", 4),
+        Sticker("elephant", "🐘", 5), Sticker("dolphin", "🐬", 5), Sticker("rocket", "🚀", 6),
+        Sticker("rainbow", "🌈", 6), Sticker("robot", "🤖", 8), Sticker("dino", "🦖", 8),
+        Sticker("octopus", "🐙", 10), Sticker("crown", "👑", 10), Sticker("trophy", "🏆", 12),
+        Sticker("cake", "🎂", 15)
+    )
+}
+
+// ---------- Histoires interactives ----------
+
+data class StoryStep(val text: String, val hero: String, val options: List<String>, val answer: String)
+
+data class Story(
+    val title: String,
+    val emoji: String,
+    val lang: Lang,
+    val ending: String,
+    val steps: List<StoryStep>
+)
+
+object Stories {
+    val fr = listOf(
+        Story(
+            "Le chat et le chiffre 3", "🐱", Lang.FR,
+            "Bravo ! L'histoire est terminée. Le chat est très content !",
+            listOf(
+                StoryStep("Le petit chat a perdu son chiffre porte-bonheur. Aide-le à trouver le chiffre trois !", "🐱", listOf("1", "3", "5", "7"), "3"),
+                StoryStep("Super ! Maintenant, le chat a faim. Trouve la lettre C, comme chat !", "😺", listOf("M", "C", "P", "T"), "C"),
+                StoryStep("Le chat veut cinq poissons. Trouve le chiffre cinq !", "🐟", listOf("2", "8", "5", "9"), "5")
+            )
+        ),
+        Story(
+            "La fusée de Léo", "🚀", Lang.FR,
+            "Bravo ! La fusée a décollé jusqu'à la lune. Tu es un champion !",
+            listOf(
+                StoryStep("Léo prépare sa fusée. Trouve la lettre F, comme fusée !", "🚀", listOf("R", "S", "F", "T"), "F"),
+                StoryStep("Super ! La fusée a besoin de quatre étoiles. Trouve le chiffre quatre !", "⭐", listOf("4", "3", "7", "1"), "4"),
+                StoryStep("Dernière étape ! Trouve la lettre L, comme lune !", "🌙", listOf("J", "I", "N", "L"), "L")
+            )
+        )
+    )
+
+    val ar = listOf(
+        Story(
+            "الأرنب والحرف أ", "🐰", Lang.AR,
+            "برافو! انتهت القصة. الأرنب سعيد جدا!",
+            listOf(
+                StoryStep("ضاع من الأرنب الصغير حرفه المفضل. ساعده ليجد حرف الألف!", "🐰", listOf("ب", "أ", "ت", "ث"), "أ"),
+                StoryStep("أحسنت! الأرنب جائع. جد معه الرقم ثلاثة!", "🥕", listOf("١", "٥", "٣", "٧"), "٣"),
+                StoryStep("الآن جد حرف الجيم، مثل جزرة!", "🥕", listOf("ج", "ح", "خ", "د"), "ج")
+            )
+        ),
+        Story(
+            "السمكة الصغيرة", "🐟", Lang.AR,
+            "برافو! السمكة سعيدة. أنت بطل!",
+            listOf(
+                StoryStep("السمكة الصغيرة تسبح في البحر. ساعدها لتجد الرقم اثنين!", "🐟", listOf("٢", "٤", "٦", "٩"), "٢"),
+                StoryStep("رائع! الآن جد حرف السين، مثل سمكة!", "🐠", listOf("ش", "ص", "س", "ض"), "س"),
+                StoryStep("آخر خطوة! جد الرقم خمسة!", "🐚", listOf("٧", "٥", "٨", "١"), "٥")
+            )
+        )
+    )
+}

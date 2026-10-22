@@ -5,13 +5,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
@@ -27,12 +29,30 @@ class MainActivity : ComponentActivity() {
         setContent {
             var screen by remember { mutableStateOf(Screen.HOME) }
             var lang by remember { mutableStateOf(Lang.FR) }
-            var stars by remember { mutableIntStateOf(prefs.getInt("stars", 0)) }
+            var earned by remember { mutableIntStateOf(prefs.getInt("stars", 0)) }
+            var spent by remember { mutableIntStateOf(prefs.getInt("spent", 0)) }
+            var owned by remember {
+                mutableStateOf<Set<String>>(prefs.getStringSet("stickers", emptySet())?.toSet() ?: emptySet())
+            }
             var musicOn by remember { mutableStateOf(prefs.getBoolean("music", true)) }
 
+            // Les étoiles gagnées servent de monnaie : solde = gagnées - dépensées
+            val balance = earned - spent
+
             fun addStar() {
-                stars += 1
-                prefs.edit().putInt("stars", stars).apply()
+                earned += 1
+                prefs.edit().putInt("stars", earned).apply()
+            }
+
+            fun buy(s: Sticker) {
+                if (s.id !in owned && balance >= s.price) {
+                    spent += s.price
+                    owned = owned + s.id
+                    prefs.edit()
+                        .putInt("spent", spent)
+                        .putStringSet("stickers", owned)
+                        .apply()
+                }
             }
 
             // Musique : suit le cycle de vie de l'appli
@@ -53,72 +73,127 @@ class MainActivity : ComponentActivity() {
                 screen = if (screen == Screen.MENU) Screen.HOME else Screen.MENU
             }
 
+            // Arabe : toute l'interface se lit de droite à gauche
+            val direction =
+                if (lang == Lang.AR && screen != Screen.HOME) LayoutDirection.Rtl else LayoutDirection.Ltr
+
             KidsTheme {
-                when (screen) {
-                    Screen.HOME -> HomeScreen(
-                        stars = stars,
-                        musicOn = musicOn,
-                        onToggleMusic = {
-                            musicOn = !musicOn
-                            prefs.edit().putBoolean("music", musicOn).apply()
-                            sound.setMusic(musicOn)
-                        },
-                        onPickLang = {
-                            sound.playClick()
-                            lang = it
-                            screen = Screen.MENU
-                        }
-                    )
+                CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                    when (screen) {
+                        Screen.HOME -> HomeScreen(
+                            stars = balance,
+                            musicOn = musicOn,
+                            onToggleMusic = {
+                                musicOn = !musicOn
+                                prefs.edit().putBoolean("music", musicOn).apply()
+                                sound.setMusic(musicOn)
+                            },
+                            onPickLang = {
+                                sound.playClick()
+                                lang = it
+                                screen = Screen.MENU
+                            }
+                        )
 
-                    Screen.MENU -> MenuScreen(
-                        lang = lang,
-                        stars = stars,
-                        onBack = { screen = Screen.HOME },
-                        onPick = {
-                            sound.playClick()
-                            screen = it
-                        }
-                    )
+                        Screen.MENU -> MenuScreen(
+                            lang = lang,
+                            stars = balance,
+                            sound = sound,
+                            onBack = { screen = Screen.HOME },
+                            onPick = {
+                                sound.playClick()
+                                screen = it
+                            }
+                        )
 
-                    Screen.LEARN_LETTERS -> LearnScreen(
-                        items = Content.letters(lang),
-                        lang = lang,
-                        sound = sound,
-                        onBack = { screen = Screen.MENU }
-                    )
+                        Screen.LEARN_LETTERS -> LearnScreen(
+                            items = Content.letters(lang),
+                            lang = lang,
+                            sound = sound,
+                            onBack = { screen = Screen.MENU }
+                        )
 
-                    Screen.LEARN_NUMBERS -> LearnScreen(
-                        items = Content.numbers(lang),
-                        lang = lang,
-                        sound = sound,
-                        onBack = { screen = Screen.MENU }
-                    )
+                        Screen.LEARN_NUMBERS -> LearnScreen(
+                            items = Content.numbers(lang),
+                            lang = lang,
+                            sound = sound,
+                            onBack = { screen = Screen.MENU }
+                        )
 
-                    Screen.QUIZ_LETTERS -> QuizScreen(
-                        pool = Content.letters(lang),
-                        lang = lang,
-                        sound = sound,
-                        stars = stars,
-                        onStar = { addStar() },
-                        onBack = { screen = Screen.MENU }
-                    )
+                        Screen.QUIZ_LETTERS -> QuizScreen(
+                            pool = Content.letters(lang),
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
 
-                    Screen.QUIZ_NUMBERS -> QuizScreen(
-                        pool = Content.numbers(lang),
-                        lang = lang,
-                        sound = sound,
-                        stars = stars,
-                        onStar = { addStar() },
-                        onBack = { screen = Screen.MENU }
-                    )
+                        Screen.QUIZ_NUMBERS -> QuizScreen(
+                            pool = Content.numbers(lang),
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
 
-                    Screen.COUNT -> CountScreen(
-                        lang = lang,
-                        sound = sound,
-                        stars = stars,
-                        onStar = { addStar() },
-                        onBack = { screen = Screen.MENU }
-                    )
+                        Screen.COUNT -> CountScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.TRACE -> TraceScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.MATCH -> MatchScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.STORY -> StoryScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.TREASURE -> TreasureScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.BUBBLES -> BubblesScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.STICKERS -> StickerScreen(
+                            lang = lang,
+                            sound = sound,
+                            balance = balance,
+                            owned = owned,
+                            onBuy = { buy(it) },
+                            onBack = { screen = Screen.MENU }
+                        )
+                    }
                 }
             }
         }
@@ -130,4 +205,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class Screen { HOME, MENU, LEARN_LETTERS, LEARN_NUMBERS, QUIZ_LETTERS, QUIZ_NUMBERS, COUNT }
+enum class Screen {
+    HOME, MENU,
+    LEARN_LETTERS, LEARN_NUMBERS, QUIZ_LETTERS, QUIZ_NUMBERS, COUNT,
+    TRACE, MATCH, STORY, TREASURE, BUBBLES, STICKERS
+}

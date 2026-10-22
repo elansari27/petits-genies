@@ -4,7 +4,13 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.speech.tts.TextToSpeech
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlin.concurrent.thread
 import kotlin.math.PI
 import kotlin.math.sin
@@ -12,24 +18,43 @@ import kotlin.math.sin
 /**
  * Sons du jeu, 100 % générés dans l'appli (aucun fichier audio à ajouter) :
  *  - voix : TextToSpeech d'Android (français et arabe)
- *  - effets : petites notes synthétisées (succès, erreur, clic)
+ *  - effets : petites notes synthétisées (succès, erreur, clic, bulle)
  *  - musique de fond : mélodie joyeuse en boucle
+ *  - vibrations légères (si le téléphone en a une)
  */
 class SoundManager(context: Context) {
 
+    private val appContext = context.applicationContext
     private var tts: TextToSpeech? = null
     private var ttsReady = false
 
+    /** Faux si la voix arabe n'est pas installée sur le téléphone. */
+    var arabicOk by mutableStateOf(true)
+        private set
+
     @Volatile private var musicOn = true
     @Volatile private var musicRunning = false
+    @Volatile var hapticOn = true
     private var musicTrack: AudioTrack? = null
     private var musicThread: Thread? = null
 
+    private val vibrator: Vibrator? = try {
+        appContext.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    } catch (_: Exception) {
+        null
+    }
+
     init {
-        tts = TextToSpeech(context.applicationContext) { status ->
+        tts = TextToSpeech(appContext) { status ->
             ttsReady = status == TextToSpeech.SUCCESS
-            tts?.setSpeechRate(0.85f) // un peu lent pour un enfant de 5 ans
-            tts?.setPitch(1.15f)
+            if (ttsReady) {
+                tts?.setSpeechRate(0.85f) // un peu lent pour un enfant de 5 ans
+                tts?.setPitch(1.15f)
+                val r = tts?.isLanguageAvailable(Lang.AR.locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
+                arabicOk = r >= TextToSpeech.LANG_AVAILABLE
+            } else {
+                arabicOk = false
+            }
         }
     }
 
@@ -43,20 +68,54 @@ class SoundManager(context: Context) {
         engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "kids-${System.nanoTime()}")
     }
 
+    // ---------- Vibrations ----------
+
+    @Suppress("DEPRECATION")
+    fun vibrate(ms: Long) {
+        if (!hapticOn) return
+        val v = vibrator ?: return
+        try {
+            if (!v.hasVibrator()) return
+            if (Build.VERSION.SDK_INT >= 26) {
+                v.vibrate(VibrationEffect.createOneShot(ms, 80))
+            } else {
+                v.vibrate(ms)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     // ---------- Effets ----------
 
-    fun playClick() = playNotes(listOf(660.0 to 70))
+    fun playClick() {
+        vibrate(10)
+        playNotes(listOf(660.0 to 70))
+    }
 
-    fun playSuccess() = playNotes(listOf(523.25 to 110, 659.25 to 110, 783.99 to 110, 1046.5 to 220))
+    fun playSuccess() {
+        vibrate(35)
+        playNotes(listOf(523.25 to 110, 659.25 to 110, 783.99 to 110, 1046.5 to 220))
+    }
 
-    fun playError() = playNotes(listOf(330.0 to 140, 262.0 to 220))
+    fun playError() {
+        vibrate(40)
+        playNotes(listOf(330.0 to 140, 262.0 to 220))
+    }
 
-    fun playStar() = playNotes(listOf(880.0 to 80, 1174.66 to 160))
+    fun playStar() {
+        vibrate(15)
+        playNotes(listOf(880.0 to 80, 1174.66 to 160))
+    }
+
+    fun playPop() {
+        vibrate(20)
+        playNotes(listOf(700.0 to 40, 1100.0 to 70))
+    }
 
     private fun playNotes(notes: List<Pair<Double, Int>>) {
         thread(start = true, isDaemon = true) {
             val pcm = synth(notes, volume = 0.5)
-            playPcm(pcm, loop = false)
+            playPcm(pcm)
         }
     }
 
@@ -161,7 +220,7 @@ class SoundManager(context: Context) {
         return track
     }
 
-    private fun playPcm(pcm: ShortArray, loop: Boolean) {
+    private fun playPcm(pcm: ShortArray) {
         try {
             val track = buildTrack(pcm)
             track.play()

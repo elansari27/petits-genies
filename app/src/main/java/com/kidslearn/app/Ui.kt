@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,18 +50,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import android.content.Context
+import android.content.Intent
+import android.speech.tts.TextToSpeech
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+
 
 // ---------- Couleurs & thème ----------
 
-private val Purple = Color(0xFF6C4BFF)
-private val Pink = Color(0xFFFF5FA2)
-private val Orange = Color(0xFFFF9F43)
-private val Green = Color(0xFF2ED573)
-private val Blue = Color(0xFF1E90FF)
-private val Yellow = Color(0xFFFFC933)
-private val Cream = Color(0xFFFFF4E0)
+val Purple = Color(0xFF6C4BFF)
+val Pink = Color(0xFFFF5FA2)
+val Orange = Color(0xFFFF9F43)
+val Green = Color(0xFF2ED573)
+val Blue = Color(0xFF1E90FF)
+val Yellow = Color(0xFFFFC933)
+val Cream = Color(0xFFFFF4E0)
 
-private val tileColors = listOf(Pink, Orange, Green, Blue, Purple, Yellow)
+val tileColors = listOf(Pink, Orange, Green, Blue, Purple, Yellow)
 
 @Composable
 fun KidsTheme(content: @Composable () -> Unit) {
@@ -70,7 +82,7 @@ fun KidsTheme(content: @Composable () -> Unit) {
     )
 }
 
-private fun t(lang: Lang, fr: String, ar: String): String = when (lang) {
+fun t(lang: Lang, fr: String, ar: String): String = when (lang) {
     Lang.FR -> fr
     Lang.AR -> ar
     Lang.MIX -> "$fr\n$ar"
@@ -235,38 +247,86 @@ fun HomeScreen(
 
 // ---------- Menu ----------
 
+private data class MenuEntry(val screen: Screen, val emoji: String, val label: String)
+
+private fun openVoiceSettings(ctx: Context) {
+    try {
+        ctx.startActivity(
+            Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    } catch (e: Exception) {
+        try {
+            ctx.startActivity(Intent("com.android.settings.TTS_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+        }
+    }
+}
+
 @Composable
-fun MenuScreen(lang: Lang, stars: Int, onBack: () -> Unit, onPick: (Screen) -> Unit) {
+fun MenuScreen(
+    lang: Lang,
+    stars: Int,
+    sound: SoundManager,
+    onBack: () -> Unit,
+    onPick: (Screen) -> Unit
+) {
     val entries = listOf(
-        Triple(Screen.LEARN_LETTERS, "🔤", t(lang, "Les lettres", "الحروف")),
-        Triple(Screen.LEARN_NUMBERS, "🔢", t(lang, "Les chiffres", "الأرقام")),
-        Triple(Screen.QUIZ_LETTERS, "🎯", t(lang, "Jeu des lettres", "لعبة الحروف")),
-        Triple(Screen.QUIZ_NUMBERS, "🎲", t(lang, "Jeu des chiffres", "لعبة الأرقام")),
-        Triple(Screen.COUNT, "🍎", t(lang, "Compter", "العدّ"))
+        MenuEntry(Screen.LEARN_LETTERS, "🔤", t(lang, "Les lettres", "الحروف")),
+        MenuEntry(Screen.LEARN_NUMBERS, "🔢", t(lang, "Les chiffres", "الأرقام")),
+        MenuEntry(Screen.QUIZ_LETTERS, "🎯", t(lang, "Jeu des lettres", "لعبة الحروف")),
+        MenuEntry(Screen.QUIZ_NUMBERS, "🎲", t(lang, "Jeu des chiffres", "لعبة الأرقام")),
+        MenuEntry(Screen.COUNT, "🍎", t(lang, "Compter", "العدّ")),
+        MenuEntry(Screen.TRACE, "✏️", t(lang, "Tracer", "ارسم")),
+        MenuEntry(Screen.MATCH, "🧩", t(lang, "Associer", "اربط")),
+        MenuEntry(Screen.STORY, "📖", t(lang, "Histoires", "قصص")),
+        MenuEntry(Screen.TREASURE, "🚀", t(lang, "Chasse au trésor", "صيد الكنز")),
+        MenuEntry(Screen.BUBBLES, "🧼", t(lang, "Bulles magiques", "فقاعات سحرية")),
+        MenuEntry(Screen.STICKERS, "🏅", t(lang, "Mes autocollants", "ملصقاتي"))
     )
+    val ctx = LocalContext.current
     GameBackground {
         Column(Modifier.fillMaxSize()) {
             TopBar(title = t(lang, "On joue !", "هيا نلعب!"), stars = stars, onBack = onBack)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            if (lang != Lang.FR && !sound.arabicOk) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                        .background(Orange, RoundedCornerShape(20.dp))
+                        .clickable { openVoiceSettings(ctx) }
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Parents : la voix arabe n'est pas installée. Touchez ici pour l'installer.",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                entries.forEachIndexed { index, (screen, emoji, label) ->
+                items(entries.size) { index ->
+                    val e = entries[index]
                     BouncyBox(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
+                            .height(130.dp),
                         color = tileColors[index % tileColors.size],
-                        onClick = { onPick(screen) }
+                        onClick = { onPick(e.screen) }
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(emoji, fontSize = 44.sp)
-                            Spacer(Modifier.size(14.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(e.emoji, fontSize = 44.sp)
                             Text(
-                                label,
-                                fontSize = 26.sp,
+                                e.label,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color.White,
                                 textAlign = TextAlign.Center
@@ -274,7 +334,6 @@ fun MenuScreen(lang: Lang, stars: Int, onBack: () -> Unit, onPick: (Screen) -> U
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
             }
         }
     }
@@ -282,11 +341,34 @@ fun MenuScreen(lang: Lang, stars: Int, onBack: () -> Unit, onPick: (Screen) -> U
 
 // ---------- Apprendre (cartes) ----------
 
+/** Les 4 formes d'une lettre arabe : isolée, finale, médiane, initiale (lues de droite à gauche). */
+@Composable
+fun ArabicForms(symbol: String) {
+    val forms = arabicForms(symbol)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            forms.forEach { f ->
+                Box(
+                    modifier = Modifier
+                        .background(Color.White.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 12.dp, vertical = 2.dp)
+                ) {
+                    Text(f, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -> Unit) {
     var index by remember { mutableIntStateOf(0) }
     val item = items[index]
     val pop = remember { Animatable(1f) }
+    val rtl = lang == Lang.AR
 
     LaunchedEffect(index) {
         sound.speak(item.spoken, item.lang)
@@ -312,17 +394,18 @@ fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -
                 }
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(item.symbol, fontSize = 150.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                    Mascot(item.emoji, 90)
-                    Spacer(Modifier.height(8.dp))
+                    Text(item.symbol, fontSize = 120.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    if (isArabicLetter(item.symbol)) {
+                        ArabicForms(item.symbol)
+                    }
+                    Mascot(item.emoji, 72)
                     Text(
                         item.word,
-                        fontSize = 36.sp,
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text("🔊", fontSize = 36.sp)
+                    Text("🔊", fontSize = 32.sp)
                 }
             }
             Row(
@@ -339,7 +422,7 @@ fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -
                         sound.playClick()
                         index = (index - 1 + items.size) % items.size
                     }
-                ) { Text("⬅️", fontSize = 40.sp) }
+                ) { Text(if (rtl) "➡️" else "⬅️", fontSize = 40.sp) }
                 BouncyBox(
                     modifier = Modifier.size(88.dp),
                     color = Purple,
@@ -348,7 +431,7 @@ fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -
                         sound.playClick()
                         index = (index + 1) % items.size
                     }
-                ) { Text("➡️", fontSize = 40.sp) }
+                ) { Text(if (rtl) "⬅️" else "➡️", fontSize = 40.sp) }
             }
         }
     }
@@ -356,13 +439,13 @@ fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -
 
 // ---------- Jeu : trouve la lettre / le chiffre ----------
 
-private fun praise(lang: Lang): String = when (lang) {
+fun praise(lang: Lang): String = when (lang) {
     Lang.FR -> Content.praiseFr.random()
     Lang.AR -> Content.praiseAr.random()
     Lang.MIX -> (Content.praiseFr + Content.praiseAr).random()
 }
 
-private fun retry(lang: Lang): String = when (lang) {
+fun retry(lang: Lang): String = when (lang) {
     Lang.FR -> Content.retryFr.random()
     Lang.AR -> Content.retryAr.random()
     Lang.MIX -> (Content.retryFr + Content.retryAr).random()
