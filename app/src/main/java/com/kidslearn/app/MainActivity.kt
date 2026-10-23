@@ -94,10 +94,13 @@ class MainActivity : ComponentActivity() {
                                 prefs.edit().putBoolean("music", musicOn).apply()
                                 sound.setMusic(musicOn)
                             },
+                            onPlay = {
+                                sound.playClick()
+                                screen = Screen.MENU
+                            },
                             onPickLang = {
                                 sound.playClick()
                                 lang = it
-                                screen = Screen.MENU
                             }
                         )
 

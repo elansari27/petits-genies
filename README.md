@@ -4,7 +4,11 @@ Appli d'apprentissage gratuit, sans pub et sans achat, pour enfant de 4 à 5 ans
 12 jeux + récompenses : étoiles, autocollants, série de jours 🔥, confettis 🎉,
 encouragements prononcés avec le prénom de l'enfant.
 
-## v3 — corrections et nouveaux jeux "à la Play Store"
+## v3 — parcours enfant + garde-fou parents
+- 🧭 **Accueil clarifié** : bouton Jouer prioritaire, choix de langue séparé,
+  parcours de mini-jeux coloré et lisible.
+- 🔒 **Zone parents** : remplacement du code fixe `1234` par un calcul aléatoire
+  à chaque ouverture, plus adapté à un espace adulte sans exposer un secret dans l'UI.
 - 🐛 **Corrigé : le traçage disait "Bravo" trop tôt.** La zone de détection était trop
   large (1 tap = ~11 points couverts) et le seuil n'était que de 80%. Maintenant :
   zone réduite, échantillonnage plus fin, **90% de points réellement couverts**,
@@ -27,3 +31,10 @@ Stats (étoiles, autocollants, série de jours), profil de l'enfant
 Jetpack Compose (BOM 2024.06), Material 3, gestes tactiles personnalisés
 (awaitEachGesture, detectDragGestures), Canvas (formes, lignes, confettis),
 TTS français/arabe, synthèse audio PCM, haptique, SharedPreferences.
+
+## Direction visuelle
+Palette chaude et contrastée, mascotte expressive, grandes cibles tactiles et
+cartes rondes. Pour les visuels futurs : photos d'enfants non identifiables en
+interaction avec un adulte, objets simples sur fonds unis, lumière naturelle,
+aucun écran montrant de données personnelles. Les photos n'étaient pas présentes
+dans le zip reçu, donc l'interface reste autonome avec emojis et formes Canvas.

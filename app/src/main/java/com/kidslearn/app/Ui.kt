@@ -190,6 +190,7 @@ fun HomeScreen(
     sound: SoundManager,
     musicOn: Boolean,
     onToggleMusic: () -> Unit,
+    onPlay: () -> Unit,
     onPickLang: (Lang) -> Unit
 ) {
     LaunchedEffect(Unit) {
@@ -250,7 +251,24 @@ fun HomeScreen(
                 fontWeight = FontWeight.ExtraBold,
                 color = Pink
             )
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(20.dp))
+            BouncyBox(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(86.dp),
+                color = Purple,
+                onClick = onPlay
+            ) {
+                Text("▶  Jouer", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "Choisis ta langue",
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF3B2A8C)
+            )
+            Spacer(Modifier.height(4.dp))
 
             val options = listOf(
                 Triple(Lang.FR, "🇫🇷  Français", Blue),
@@ -261,12 +279,12 @@ fun HomeScreen(
                 BouncyBox(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(96.dp)
+                        .height(68.dp)
                         .padding(vertical = 6.dp),
                     color = color,
                     onClick = { onPickLang(lang) }
                 ) {
-                    Text(label, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    Text(label, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                 }
             }
         }
@@ -322,7 +340,15 @@ fun MenuScreen(
     val ctx = LocalContext.current
     GameBackground {
         Column(Modifier.fillMaxSize()) {
-            TopBar(title = t(lang, "On joue !", "هيا نلعب!"), stars = stars, onBack = onBack)
+            TopBar(title = t(lang, "Mon parcours", "مساري"), stars = stars, onBack = onBack)
+            Text(
+                t(lang, "Choisis une aventure", "اختر مغامرة"),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Purple,
+                textAlign = TextAlign.Center
+            )
             if (lang != Lang.FR && !sound.arabicOk) {
                 Box(
                     modifier = Modifier
