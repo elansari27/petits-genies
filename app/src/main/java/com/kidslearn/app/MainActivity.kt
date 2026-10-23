@@ -222,10 +222,38 @@ class MainActivity : ComponentActivity() {
                             onBack = { screen = Screen.MENU }
                         )
 
+                        Screen.BIG_SMALL -> BigSmallScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.CONNECT -> ConnectScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.BASKET -> BasketScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
                         Screen.TRACE -> TraceScreen(
                             lang = lang,
                             sound = sound,
                             stars = balance,
+                            childName = profile.name,
                             onStar = { addStar() },
                             onBack = { screen = Screen.MENU }
                         )
@@ -285,5 +313,6 @@ enum class Screen {
     HOME, MENU,
     LEARN_LETTERS, LEARN_NUMBERS, QUIZ_LETTERS, QUIZ_NUMBERS, COUNT,
     COLORS, SHAPES, MEMORY, FIRST_LETTER, PARENTS,
+    BIG_SMALL, CONNECT, BASKET,
     TRACE, MATCH, STORY, TREASURE, BUBBLES, STICKERS
 }

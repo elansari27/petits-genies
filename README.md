@@ -1,15 +1,29 @@
-# Petits Génies — v2 (adapté 4-5 ans)
+# Petits Génies — v3 (adapté 4-5 ans, Ilyas)
 
-Appli d'apprentissage ludique pour enfant de 4 à 5 ans (prénom personnalisable, par défaut « Ilyas »).
+Appli d'apprentissage gratuit, sans pub et sans achat, pour enfant de 4 à 5 ans.
+12 jeux + récompenses : étoiles, autocollants, série de jours 🔥, confettis 🎉,
+encouragements prononcés avec le prénom de l'enfant.
 
-## Nouveautés v2
-- **Profil enfant** : prénom prononcé dans les encouragements (« Bravo Ilyas ! »), avatar au choix, âge réglable (3-6 ans)
-- **Nouveaux jeux** : 🎨 les couleurs, 🔷 les formes, 🃏 memory (paires), 🖼️ la première lettre
-- **Zone parents** protégée par un code (défaut : 1234) : stats (étoiles, autocollants, série de jours), modifier le profil, installer la voix arabe, remise à zéro
-- **Série de jours (streak)** : flamme 🔥 sur l'accueil pour motiver à jouer un peu chaque jour
-- **Adaptation 4-5 ans** : 3 propositions au quiz au lieu de 4, tout est lu à voix haute, grosses cibles
-- **Corrections** : double prononciation des félicitations corrigée (le même message est affiché ET parlé)
+## v3 — corrections et nouveaux jeux "à la Play Store"
+- 🐛 **Corrigé : le traçage disait "Bravo" trop tôt.** La zone de détection était trop
+  large (1 tap = ~11 points couverts) et le seuil n'était que de 80%. Maintenant :
+  zone réduite, échantillonnage plus fin, **90% de points réellement couverts**,
+  et une **barre de progression** montre à l'enfant qu'il doit finir le tracé.
+- 🐘 **Petit ou grand** : comparer les tailles (touche le plus grand / le plus petit)
+- 🔗 **Relier** : tracer un trait à la main de la lettre vers l'image (glisser)
+- 🧺 **Le panier** : glisser-déposer les objets dans la corbeille
+- 🎉 **Confettis** à chaque victoire
 
-## Jeux existants conservés
-Lettres FR/AR, chiffres, compter, tracer, associer, histoires interactives, bulles magiques,
-chasse au trésor, boutique d'autocollants, système d'étoiles.
+## Jeux déjà présents (v2)
+Lettres FR/AR, chiffres, couleurs, formes, compter, première lettre, memory,
+quiz écoute (3 propositions pour 4-5 ans), tracer, associer, histoires,
+bulles magiques, chasse au trésor, boutique d'autocollants.
+
+## Zone parents (code 1234)
+Stats (étoiles, autocollants, série de jours), profil de l'enfant
+(prénom, avatar, âge), installation de la voix arabe, remise à zéro.
+
+## Techniques
+Jetpack Compose (BOM 2024.06), Material 3, gestes tactiles personnalisés
+(awaitEachGesture, detectDragGestures), Canvas (formes, lignes, confettis),
+TTS français/arabe, synthèse audio PCM, haptique, SharedPreferences.

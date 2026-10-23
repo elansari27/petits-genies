@@ -40,6 +40,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -113,7 +114,7 @@ private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? 
     val h = size.height
     val pixels = IntArray(w * h)
     bmp.getPixels(pixels, 0, w, 0, 0, w, h)
-    val step = (18 * density).toInt().coerceAtLeast(8)
+    val step = (13 * density).toInt().coerceAtLeast(6)
     val points = ArrayList<Offset>()
     var y = step / 2
     while (y < h) {
@@ -149,6 +150,7 @@ fun TraceScreen(
     lang: Lang,
     sound: SoundManager,
     stars: Int,
+    childName: String = "",
     onStar: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -166,8 +168,11 @@ fun TraceScreen(
     var count by remember(glyph) { mutableIntStateOf(0) }
     var done by remember(index) { mutableStateOf(false) }
     val trail = remember { mutableStateListOf<Offset>() }
-    val hitRadius = 34f * density
-    val needed = (((glyph?.targets?.size ?: 1) * 0.8f).toInt()).coerceAtLeast(1)
+    val hitRadius = 26f * density
+    // Avant : 80% de la zone avec une grosse hitbox = "Bravo" après 2 coups de doigt.
+    // Maintenant : 90% minimum de points réellement couverts (et jamais plus que le nombre de points).
+    val needed = if (glyph == null) Int.MAX_VALUE
+    else ((glyph.targets.size * 0.90f).toInt().coerceAtLeast(6)).coerceAtMost(glyph.targets.size)
 
     fun touch(p: Offset) {
         trail.add(p)
@@ -192,7 +197,7 @@ fun TraceScreen(
     LaunchedEffect(done) {
         if (done) {
             sound.playSuccess()
-            sound.speak(praiseFor(lang), if (lang == Lang.AR) Lang.AR else Lang.FR)
+            sound.speak(praiseNamed(lang, childName), if (lang == Lang.AR) Lang.AR else Lang.FR)
             onStar()
             delay(2200)
             index = (index + 1) % items.size
@@ -246,6 +251,19 @@ fun TraceScreen(
                     Text("🎉", fontSize = 120.sp, modifier = Modifier.align(Alignment.Center))
                 }
             }
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = {
+                    if (needed <= 0) 0f else (count.toFloat() / needed).coerceIn(0f, 1f)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                color = Green,
+                trackColor = Color(0xFFE8E0FF)
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
