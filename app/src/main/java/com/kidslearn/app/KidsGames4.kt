@@ -175,7 +175,7 @@ fun ColorsGameScreen(
                             } else {
                                 feedback = retry(lang)
                                 sound.playError()
-                                sound.vibrate()
+                                sound.vibrate(100)
                             }
                         }
                     ) {
@@ -268,7 +268,7 @@ fun ShapesScreen(
                             } else {
                                 feedback = retry(lang)
                                 sound.playError()
-                                sound.vibrate()
+                                sound.vibrate(100)
                             }
                         }
                     ) {
@@ -489,7 +489,7 @@ fun FirstLetterScreen(
                             } else {
                                 feedback = retry(lang)
                                 sound.playError()
-                                sound.vibrate()
+                                sound.vibrate(100)
                             }
                         }
                     ) {
