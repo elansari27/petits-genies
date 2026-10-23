@@ -35,6 +35,8 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf<Set<String>>(prefs.getStringSet("stickers", emptySet())?.toSet() ?: emptySet())
             }
             var musicOn by remember { mutableStateOf(prefs.getBoolean("music", true)) }
+            var profile by remember { mutableStateOf(ProfileStore.load(this@MainActivity)) }
+            var streak by remember { mutableIntStateOf(ProfileStore.touchStreak(this@MainActivity)) }
 
             // Les étoiles gagnées servent de monnaie : solde = gagnées - dépensées
             val balance = earned - spent
@@ -82,6 +84,10 @@ class MainActivity : ComponentActivity() {
                     when (screen) {
                         Screen.HOME -> HomeScreen(
                             stars = balance,
+                            streak = streak,
+                            childName = profile.name,
+                            avatar = profile.avatar,
+                            sound = sound,
                             musicOn = musicOn,
                             onToggleMusic = {
                                 musicOn = !musicOn
@@ -120,11 +126,14 @@ class MainActivity : ComponentActivity() {
                             onBack = { screen = Screen.MENU }
                         )
 
+                        // 4-5 ans : 3 propositions au lieu de 4 (moins de charge mentale)
                         Screen.QUIZ_LETTERS -> QuizScreen(
                             pool = Content.letters(lang),
                             lang = lang,
                             sound = sound,
                             stars = balance,
+                            distractors = if (profile.age <= 5) 2 else 3,
+                            childName = profile.name,
                             onStar = { addStar() },
                             onBack = { screen = Screen.MENU }
                         )
@@ -134,6 +143,8 @@ class MainActivity : ComponentActivity() {
                             lang = lang,
                             sound = sound,
                             stars = balance,
+                            distractors = if (profile.age <= 5) 2 else 3,
+                            childName = profile.name,
                             onStar = { addStar() },
                             onBack = { screen = Screen.MENU }
                         )
@@ -142,7 +153,72 @@ class MainActivity : ComponentActivity() {
                             lang = lang,
                             sound = sound,
                             stars = balance,
+                            childName = profile.name,
                             onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        // ---- Nouveaux jeux adaptés à 4-5 ans ----
+                        Screen.COLORS -> ColorsGameScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.SHAPES -> ShapesScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.MEMORY -> MemoryScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.FIRST_LETTER -> FirstLetterScreen(
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.PARENTS -> ParentScreen(
+                            lang = lang,
+                            sound = sound,
+                            profile = profile,
+                            balance = balance,
+                            stickersOwned = owned.size,
+                            streak = streak,
+                            onSaveProfile = {
+                                profile = it
+                                ProfileStore.save(this@MainActivity, it)
+                            },
+                            onResetProgress = {
+                                earned = 0
+                                spent = 0
+                                owned = emptySet()
+                                streak = 0
+                                prefs.edit()
+                                    .putInt("stars", 0)
+                                    .putInt("spent", 0)
+                                    .putStringSet("stickers", emptySet())
+                                    .apply()
+                                ProfileStore.resetProgress(this@MainActivity)
+                            },
+                            onOpenVoiceSettings = { openVoiceSettings(this@MainActivity) },
                             onBack = { screen = Screen.MENU }
                         )
 
@@ -208,5 +284,6 @@ class MainActivity : ComponentActivity() {
 enum class Screen {
     HOME, MENU,
     LEARN_LETTERS, LEARN_NUMBERS, QUIZ_LETTERS, QUIZ_NUMBERS, COUNT,
+    COLORS, SHAPES, MEMORY, FIRST_LETTER, PARENTS,
     TRACE, MATCH, STORY, TREASURE, BUBBLES, STICKERS
 }

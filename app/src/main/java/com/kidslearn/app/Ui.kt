@@ -184,10 +184,17 @@ fun Mascot(emoji: String, size: Int = 90) {
 @Composable
 fun HomeScreen(
     stars: Int,
+    streak: Int,
+    childName: String,
+    avatar: String,
+    sound: SoundManager,
     musicOn: Boolean,
     onToggleMusic: () -> Unit,
     onPickLang: (Lang) -> Unit
 ) {
+    LaunchedEffect(Unit) {
+        sound.speak("Salut $childName ! Bienvenue chez Petits Génies !", Lang.FR)
+    }
     GameBackground {
         Column(
             modifier = Modifier
@@ -209,7 +216,28 @@ fun HomeScreen(
                 ) { Text(if (musicOn) "🎵" else "🔇", fontSize = 28.sp) }
             }
             Spacer(Modifier.height(8.dp))
-            Mascot("🦄", 110)
+            if (streak > 1) {
+                Box(
+                    modifier = Modifier
+                        .background(Orange, RoundedCornerShape(24.dp))
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "🔥 $streak jours de suite !",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            Mascot(avatar, 110)
+            Text(
+                "Salut $childName ! 👋",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Pink
+            )
             Text(
                 "Petits Génies",
                 fontSize = 38.sp,
@@ -249,7 +277,7 @@ fun HomeScreen(
 
 private data class MenuEntry(val screen: Screen, val emoji: String, val label: String)
 
-private fun openVoiceSettings(ctx: Context) {
+fun openVoiceSettings(ctx: Context) {
     try {
         ctx.startActivity(
             Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -273,15 +301,20 @@ fun MenuScreen(
     val entries = listOf(
         MenuEntry(Screen.LEARN_LETTERS, "🔤", t(lang, "Les lettres", "الحروف")),
         MenuEntry(Screen.LEARN_NUMBERS, "🔢", t(lang, "Les chiffres", "الأرقام")),
-        MenuEntry(Screen.QUIZ_LETTERS, "🎯", t(lang, "Jeu des lettres", "لعبة الحروف")),
-        MenuEntry(Screen.QUIZ_NUMBERS, "🎲", t(lang, "Jeu des chiffres", "لعبة الأرقام")),
+        MenuEntry(Screen.COLORS, "🎨", t(lang, "Les couleurs", "الألوان")),
+        MenuEntry(Screen.SHAPES, "🔷", t(lang, "Les formes", "الأشكال")),
         MenuEntry(Screen.COUNT, "🍎", t(lang, "Compter", "العدّ")),
+        MenuEntry(Screen.FIRST_LETTER, "🖼️", t(lang, "Première lettre", "أول حرف")),
+        MenuEntry(Screen.QUIZ_LETTERS, "🎯", t(lang, "Écoute les lettres", "اسمع الحروف")),
+        MenuEntry(Screen.QUIZ_NUMBERS, "🎲", t(lang, "Écoute les chiffres", "اسمع الأرقام")),
+        MenuEntry(Screen.MEMORY, "🃏", t(lang, "Memory", "الذاكرة")),
         MenuEntry(Screen.TRACE, "✏️", t(lang, "Tracer", "ارسم")),
         MenuEntry(Screen.MATCH, "🧩", t(lang, "Associer", "اربط")),
         MenuEntry(Screen.STORY, "📖", t(lang, "Histoires", "قصص")),
-        MenuEntry(Screen.TREASURE, "🚀", t(lang, "Chasse au trésor", "صيد الكنز")),
         MenuEntry(Screen.BUBBLES, "🧼", t(lang, "Bulles magiques", "فقاعات سحرية")),
-        MenuEntry(Screen.STICKERS, "🏅", t(lang, "Mes autocollants", "ملصقاتي"))
+        MenuEntry(Screen.TREASURE, "🚀", t(lang, "Chasse au trésor", "صيد الكنز")),
+        MenuEntry(Screen.STICKERS, "🏅", t(lang, "Mes autocollants", "ملصقاتي")),
+        MenuEntry(Screen.PARENTS, "👨‍👩‍👧", t(lang, "Zone parents", "منطقة الآباء"))
     )
     val ctx = LocalContext.current
     GameBackground {
@@ -457,6 +490,8 @@ fun QuizScreen(
     lang: Lang,
     sound: SoundManager,
     stars: Int,
+    distractors: Int = 2,
+    childName: String = "",
     onStar: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -464,7 +499,7 @@ fun QuizScreen(
     val target = remember(round) { pool.random() }
     val choices = remember(round) {
         (pool.filter { it.lang == target.lang && it.symbol != target.symbol }
-            .shuffled().take(3) + target).shuffled()
+            .shuffled().take(distractors) + target).shuffled()
     }
     var feedback by remember(round) { mutableStateOf("") }
     var solved by remember(round) { mutableStateOf(false) }
@@ -535,11 +570,10 @@ fun QuizScreen(
                                     if (solved) return@BouncyBox
                                     if (c.symbol == target.symbol) {
                                         solved = true
-                                        feedback = "🎉 ${praise(lang)}"
+                                        val p = praiseNamed(target.lang, childName)
+                                        feedback = "🎉 $p"
                                         sound.playSuccess()
-                                        sound.speak(praise(lang).let { p ->
-                                            if (target.lang == Lang.AR) Content.praiseAr.random() else p
-                                        }, target.lang)
+                                        sound.speak(p, target.lang)
                                         onStar()
                                     } else {
                                         wrongSymbol = c.symbol
@@ -578,6 +612,7 @@ fun CountScreen(
     lang: Lang,
     sound: SoundManager,
     stars: Int,
+    childName: String = "",
     onStar: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -667,7 +702,7 @@ fun CountScreen(
                             if (solved) return@BouncyBox
                             if (n == count) {
                                 solved = true
-                                feedback = "🎉 ${praise(roundLang)}"
+                                feedback = "🎉 ${praiseNamed(roundLang, childName)}"
                                 sound.playSuccess()
                                 onStar()
                             } else {

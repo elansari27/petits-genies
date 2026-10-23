@@ -1,23 +1,15 @@
-# Petits Génies – app Android pour apprendre lettres et chiffres (5 ans)
+# Petits Génies — v2 (adapté 4-5 ans)
 
-Langues : français, arabe, ou les deux mélangés. Aucune publicité, aucun accès internet, aucune collecte de données.
-Seule permission : les vibrations légères.
+Appli d'apprentissage ludique pour enfant de 4 à 5 ans (prénom personnalisable, par défaut « Ilyas »).
 
-## Activités
-- Les lettres / Les chiffres : cartes géantes avec voix, image, mot-exemple. En arabe : les 4 formes de la lettre (isolée, finale, médiane, initiale)
-- Jeu des lettres / Jeu des chiffres : écoute et touche la bonne réponse
-- Compter : compter des objets puis choisir le chiffre
-- Tracer : suivre la lettre ou le chiffre avec le doigt (traînée d'étoiles, la forme se colorie)
-- Associer : glisser la lettre sur la bonne image
-- Histoires : 4 mini-histoires audio (2 en français, 2 en arabe) où l'enfant touche la bonne réponse
-- Chasse au trésor : retrouver 3 lettres, une fusée voyage vers la lune (aucune pénalité)
-- Bulles magiques : bulles à éclater, chaque bulle prononce sa lettre ou son chiffre
-- Mes autocollants : les étoiles servent de monnaie pour débloquer 16 autocollants animés
+## Nouveautés v2
+- **Profil enfant** : prénom prononcé dans les encouragements (« Bravo Ilyas ! »), avatar au choix, âge réglable (3-6 ans)
+- **Nouveaux jeux** : 🎨 les couleurs, 🔷 les formes, 🃏 memory (paires), 🖼️ la première lettre
+- **Zone parents** protégée par un code (défaut : 1234) : stats (étoiles, autocollants, série de jours), modifier le profil, installer la voix arabe, remise à zéro
+- **Série de jours (streak)** : flamme 🔥 sur l'accueil pour motiver à jouer un peu chaque jour
+- **Adaptation 4-5 ans** : 3 propositions au quiz au lieu de 4, tout est lu à voix haute, grosses cibles
+- **Corrections** : double prononciation des félicitations corrigée (le même message est affiché ET parlé)
 
-## Arabe
-- Toute l'interface passe en lecture de droite à gauche quand l'arabe est choisi
-- La voix utilise la synthèse vocale d'Android. Si la voix arabe manque, un bandeau "Parents" propose de l'installer
-
-## Lancer le projet
-- Sur PC : Android Studio > File > Open > dossier KidsLearn > Run
-- Sans PC : pousser le projet sur GitHub, l'onglet Actions construit l'APK (.github/workflows/build.yml)
+## Jeux existants conservés
+Lettres FR/AR, chiffres, compter, tracer, associer, histoires interactives, bulles magiques,
+chasse au trésor, boutique d'autocollants, système d'étoiles.
