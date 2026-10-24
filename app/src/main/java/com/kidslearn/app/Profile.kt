@@ -5,12 +5,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Profil de l'enfant : prénom, avatar, âge, code parents. */
+/** Profil de l'enfant : prénom, avatar, âge. */
 data class ChildProfile(
     val name: String = "Ilyas",
     val avatar: String = "🦁",
-    val age: Int = 5,
-    val pin: String = "1234"
+    val age: Int = 5
 )
 
 object ProfileStore {
@@ -22,8 +21,7 @@ object ProfileStore {
         return ChildProfile(
             name = p.getString("child_name", null) ?: "Ilyas",
             avatar = p.getString("child_avatar", "🦁") ?: "🦁",
-            age = p.getInt("child_age", 5),
-            pin = p.getString("parent_pin", "1234") ?: "1234"
+            age = p.getInt("child_age", 5)
         )
     }
 
@@ -32,7 +30,6 @@ object ProfileStore {
             .putString("child_name", profile.name)
             .putString("child_avatar", profile.avatar)
             .putInt("child_age", profile.age)
-            .putString("parent_pin", profile.pin)
             .apply()
     }
 
@@ -70,9 +67,14 @@ fun praiseNamed(lang: Lang, name: String): String {
     else listOf(
         "أحسنت يا $n!", "رائع يا $n!", "ممتاز يا $n!", "أنت بطل يا $n!"
     ).random()
+    val en = if (n.isEmpty()) Content.praiseEn.random()
+    else listOf(
+        "Great job $n!", "Well done $n!", "Awesome $n!", "You are a champion $n!"
+    ).random()
     return when (lang) {
         Lang.FR -> fr
         Lang.AR -> ar
+        Lang.EN -> en
         Lang.MIX -> if (java.util.Random().nextBoolean()) fr else ar
     }
 }

@@ -1,40 +1,21 @@
-# Petits Génies — v3 (adapté 4-5 ans, Ilyas)
+# Petits Génies (KidsLearn) — v4
 
-Appli d'apprentissage gratuit, sans pub et sans achat, pour enfant de 4 à 5 ans.
-12 jeux + récompenses : étoiles, autocollants, série de jours 🔥, confettis 🎉,
-encouragements prononcés avec le prénom de l'enfant.
+Application éducative Android pour enfants de 4-5 ans : lettres et chiffres en **français, arabe, anglais** et mode mixte FR+AR.
+Aucune publicité, aucun achat intégré, aucune connexion Internet requise (permission : vibration uniquement).
 
-## v3 — parcours enfant + garde-fou parents
-- 🧭 **Accueil clarifié** : bouton Jouer prioritaire, choix de langue séparé,
-  parcours de mini-jeux coloré et lisible.
-- 🔒 **Zone parents** : remplacement du code fixe `1234` par un calcul aléatoire
-  à chaque ouverture, plus adapté à un espace adulte sans exposer un secret dans l'UI.
-- 🐛 **Corrigé : le traçage disait "Bravo" trop tôt.** La zone de détection était trop
-  large (1 tap = ~11 points couverts) et le seuil n'était que de 80%. Maintenant :
-  zone réduite, échantillonnage plus fin, **90% de points réellement couverts**,
-  et une **barre de progression** montre à l'enfant qu'il doit finir le tracé.
-- 🐘 **Petit ou grand** : comparer les tailles (touche le plus grand / le plus petit)
-- 🔗 **Relier** : tracer un trait à la main de la lettre vers l'image (glisser)
-- 🧺 **Le panier** : glisser-déposer les objets dans la corbeille
-- 🎉 **Confettis** à chaque victoire
+## Nouveautés v4
+- **Chiffres européens uniquement** (0 1 2 3…) dans toutes les langues, y compris en arabe.
+- **Anglais** ajouté (lettres, chiffres, histoires, félicitations, voix).
+- **Voix corrigée** : le texte est nettoyé (emojis retirés) et découpé par écriture ; l'arabe est lu avec la voix arabe, le latin avec la voix française/anglaise. Plus de phrases arabes mal lues.
+- **Test après apprentissage** : bouton 🎯 Test sur chaque écran d'apprentissage (lettres, chiffres).
+- **Cache-cache** (lettres et chiffres) : l'enfant retrouve ce qu'il a appris derrière les décors.
+- **Bug اربط corrigé** : les jeux géométriques (relier, associer, panier, tracer, trésor, bulles) restent en gauche-droite ; Compose inversait les positions en arabe.
+- **Tracé corrigé** : grille adaptée à la taille du symbole, 75 % suffisent (60 % si l'enfant lève le doigt), points orange d'aide.
+- **Zone parents** protégée par une addition au hasard (plus de code fixe).
+- Sélecteur de langue Français / Arabe / English / Français+Arabe.
 
-## Jeux déjà présents (v2)
-Lettres FR/AR, chiffres, couleurs, formes, compter, première lettre, memory,
-quiz écoute (3 propositions pour 4-5 ans), tracer, associer, histoires,
-bulles magiques, chasse au trésor, boutique d'autocollants.
+## Conception pédagogique
+Découvre → Teste → Cache-cache → Récompense. Maximum 3 choix, tout est lu à voix haute, félicitations avec le prénom, aide après erreurs.
 
-## Zone parents (code 1234)
-Stats (étoiles, autocollants, série de jours), profil de l'enfant
-(prénom, avatar, âge), installation de la voix arabe, remise à zéro.
-
-## Techniques
-Jetpack Compose (BOM 2024.06), Material 3, gestes tactiles personnalisés
-(awaitEachGesture, detectDragGestures), Canvas (formes, lignes, confettis),
-TTS français/arabe, synthèse audio PCM, haptique, SharedPreferences.
-
-## Direction visuelle
-Palette chaude et contrastée, mascotte expressive, grandes cibles tactiles et
-cartes rondes. Pour les visuels futurs : photos d'enfants non identifiables en
-interaction avec un adulte, objets simples sur fonds unis, lumière naturelle,
-aucun écran montrant de données personnelles. Les photos n'étaient pas présentes
-dans le zip reçu, donc l'interface reste autonome avec emojis et formes Canvas.
+## Compiler
+Poussez le dépôt sur GitHub : Actions → « Build APK » → téléchargez `PetitsGenies-apk`.

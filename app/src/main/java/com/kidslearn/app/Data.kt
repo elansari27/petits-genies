@@ -2,9 +2,11 @@ package com.kidslearn.app
 
 import java.util.Locale
 
+/** Langues de l'application. MIX = français + arabe ensemble. */
 enum class Lang(val locale: Locale) {
     FR(Locale.FRENCH),
-    AR(Locale("ar")),
+    AR(Locale.forLanguageTag("ar")),
+    EN(Locale.ENGLISH),
     MIX(Locale.FRENCH)
 }
 
@@ -16,6 +18,9 @@ data class Item(
     val emoji: String,
     val lang: Lang
 )
+
+/** Marqueur utilisé pour reconnaître les chiffres dans [Item.emoji]. */
+const val NUMBER_EMOJI = "🔢"
 
 object Content {
 
@@ -40,12 +45,41 @@ object Content {
         Item("R", "R comme robot", "Robot", "🤖", Lang.FR),
         Item("S", "S comme soleil", "Soleil", "☀️", Lang.FR),
         Item("T", "T comme tortue", "Tortue", "🐢", Lang.FR),
-        Item("U", "U comme ours", "Ours", "🐻", Lang.FR),
+        Item("U", "U comme usine", "Usine", "🏭", Lang.FR),
         Item("V", "V comme voiture", "Voiture", "🚗", Lang.FR),
         Item("W", "W comme wagon", "Wagon", "🚃", Lang.FR),
         Item("X", "X comme xylophone", "Xylophone", "🎼", Lang.FR),
         Item("Y", "Y comme yo-yo", "Yo-yo", "🪀", Lang.FR),
         Item("Z", "Z comme zèbre", "Zèbre", "🦓", Lang.FR)
+    )
+
+    private val enLetters = listOf(
+        Item("A", "A is for apple", "Apple", "🍎", Lang.EN),
+        Item("B", "B is for ball", "Ball", "⚽", Lang.EN),
+        Item("C", "C is for cat", "Cat", "🐱", Lang.EN),
+        Item("D", "D is for dog", "Dog", "🐶", Lang.EN),
+        Item("E", "E is for elephant", "Elephant", "🐘", Lang.EN),
+        Item("F", "F is for fish", "Fish", "🐟", Lang.EN),
+        Item("G", "G is for giraffe", "Giraffe", "🦒", Lang.EN),
+        Item("H", "H is for hat", "Hat", "🎩", Lang.EN),
+        Item("I", "I is for ice cream", "Ice cream", "🍦", Lang.EN),
+        Item("J", "J is for juice", "Juice", "🧃", Lang.EN),
+        Item("K", "K is for key", "Key", "🔑", Lang.EN),
+        Item("L", "L is for lion", "Lion", "🦁", Lang.EN),
+        Item("M", "M is for moon", "Moon", "🌙", Lang.EN),
+        Item("N", "N is for nose", "Nose", "👃", Lang.EN),
+        Item("O", "O is for orange", "Orange", "🍊", Lang.EN),
+        Item("P", "P is for pizza", "Pizza", "🍕", Lang.EN),
+        Item("Q", "Q is for queen", "Queen", "👑", Lang.EN),
+        Item("R", "R is for rainbow", "Rainbow", "🌈", Lang.EN),
+        Item("S", "S is for sun", "Sun", "☀️", Lang.EN),
+        Item("T", "T is for tree", "Tree", "🌳", Lang.EN),
+        Item("U", "U is for umbrella", "Umbrella", "☂️", Lang.EN),
+        Item("V", "V is for violin", "Violin", "🎻", Lang.EN),
+        Item("W", "W is for whale", "Whale", "🐳", Lang.EN),
+        Item("X", "X is for xylophone", "Xylophone", "🎼", Lang.EN),
+        Item("Y", "Y is for yarn", "Yarn", "🧶", Lang.EN),
+        Item("Z", "Z is for zebra", "Zebra", "🦓", Lang.EN)
     )
 
     private val arLetters = listOf(
@@ -58,7 +92,7 @@ object Content {
         Item("خ", "خاء. خروف", "خروف", "🐑", Lang.AR),
         Item("د", "دال. دجاجة", "دجاجة", "🐔", Lang.AR),
         Item("ذ", "ذال. ذرة", "ذرة", "🌽", Lang.AR),
-        Item("ر", "راء. رمان", "رمان", "🍎", Lang.AR),
+        Item("ر", "راء. رجل", "رجل", "👨", Lang.AR),
         Item("ز", "زاي. زرافة", "زرافة", "🦒", Lang.AR),
         Item("س", "سين. سمكة", "سمكة", "🐟", Lang.AR),
         Item("ش", "شين. شمس", "شمس", "☀️", Lang.AR),
@@ -87,19 +121,33 @@ object Content {
         "صفر", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة"
     )
 
-    private val arDigits = listOf("٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠")
+    private val enNumbers = listOf(
+        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"
+    )
 
+    /** Les chiffres sont TOUJOURS écrits en chiffres européens (0 1 2 3 ...), même en arabe. */
     val frDigits: List<Item> = (0..10).map {
-        Item(it.toString(), frNumbers[it], frNumbers[it], "🔢", Lang.FR)
+        Item(it.toString(), frNumbers[it], frNumbers[it], NUMBER_EMOJI, Lang.FR)
     }
 
     val arDigitItems: List<Item> = (0..10).map {
-        Item(arDigits[it], arNumbers[it], arNumbers[it], "🔢", Lang.AR)
+        Item(it.toString(), arNumbers[it], arNumbers[it], NUMBER_EMOJI, Lang.AR)
+    }
+
+    val enDigits: List<Item> = (0..10).map {
+        Item(it.toString(), enNumbers[it], enNumbers[it], NUMBER_EMOJI, Lang.EN)
+    }
+
+    fun digitsFor(lang: Lang): List<Item> = when (lang) {
+        Lang.AR -> arDigitItems
+        Lang.EN -> enDigits
+        else -> frDigits
     }
 
     fun letters(lang: Lang): List<Item> = when (lang) {
         Lang.FR -> frLetters
         Lang.AR -> arLetters
+        Lang.EN -> enLetters
         Lang.MIX -> frLetters.zip(arLetters).flatMap { listOf(it.first, it.second) } +
                 arLetters.drop(frLetters.size)
     }
@@ -107,6 +155,7 @@ object Content {
     fun numbers(lang: Lang): List<Item> = when (lang) {
         Lang.FR -> frDigits
         Lang.AR -> arDigitItems
+        Lang.EN -> enDigits
         Lang.MIX -> frDigits.zip(arDigitItems).flatMap { listOf(it.first, it.second) }
     }
 
@@ -116,15 +165,17 @@ object Content {
     /** Mots d'encouragement. */
     val praiseFr = listOf("Bravo !", "Super !", "Génial !", "Tu es un champion !", "Bien joué !")
     val praiseAr = listOf("أحسنت!", "رائع!", "ممتاز!", "برافو!", "عمل جميل!")
+    val praiseEn = listOf("Great job!", "Well done!", "Awesome!", "You are a champion!", "Super!")
     val retryFr = listOf("Essaie encore !", "Presque ! Réessaie !")
     val retryAr = listOf("حاول مرة أخرى!", "قريب! جرّب ثانية!")
+    val retryEn = listOf("Try again!", "Almost! Try again!")
 }
 
 // ---------- Aides ----------
 
 /** Ce qu'on dit quand l'enfant touche une lettre ou un chiffre (court, sans le mot-exemple). */
 fun Item.shortSpoken(): String = when {
-    emoji == "🔢" -> spoken
+    emoji == NUMBER_EMOJI -> spoken
     lang == Lang.AR -> spoken.substringBefore('.')
     else -> symbol
 }
@@ -139,8 +190,11 @@ fun arabicForms(symbol: String): List<String> {
     return listOf(base, zwj + base, zwj + base + zwj, base + zwj)
 }
 
-fun praiseFor(lang: Lang): String =
-    if (lang == Lang.AR) Content.praiseAr.random() else Content.praiseFr.random()
+fun praiseFor(lang: Lang): String = when (lang) {
+    Lang.AR -> Content.praiseAr.random()
+    Lang.EN -> Content.praiseEn.random()
+    else -> Content.praiseFr.random()
+}
 
 // ---------- Autocollants ----------
 
@@ -197,17 +251,38 @@ object Stories {
             "برافو! انتهت القصة. الأرنب سعيد جدا!",
             listOf(
                 StoryStep("ضاع من الأرنب الصغير حرفه المفضل. ساعده ليجد حرف الألف!", "🐰", listOf("ب", "أ", "ت", "ث"), "أ"),
-                StoryStep("أحسنت! الأرنب جائع. جد معه الرقم ثلاثة!", "🥕", listOf("١", "٥", "٣", "٧"), "٣"),
-                StoryStep("الآن جد حرف الجيم، مثل جزرة!", "🥕", listOf("ج", "ح", "خ", "د"), "ج")
+                StoryStep("أحسنت! الأرنب جائع. جد معه الرقم ثلاثة!", "🥕", listOf("1", "5", "3", "7"), "3"),
+                StoryStep("الآن جد حرف الجيم، مثل جمل!", "🐪", listOf("ج", "ح", "خ", "د"), "ج")
             )
         ),
         Story(
             "السمكة الصغيرة", "🐟", Lang.AR,
             "برافو! السمكة سعيدة. أنت بطل!",
             listOf(
-                StoryStep("السمكة الصغيرة تسبح في البحر. ساعدها لتجد الرقم اثنين!", "🐟", listOf("٢", "٤", "٦", "٩"), "٢"),
+                StoryStep("السمكة الصغيرة تسبح في البحر. ساعدها لتجد الرقم اثنين!", "🐟", listOf("2", "4", "6", "9"), "2"),
                 StoryStep("رائع! الآن جد حرف السين، مثل سمكة!", "🐠", listOf("ش", "ص", "س", "ض"), "س"),
-                StoryStep("آخر خطوة! جد الرقم خمسة!", "🐚", listOf("٧", "٥", "٨", "١"), "٥")
+                StoryStep("آخر خطوة! جد الرقم خمسة!", "🐚", listOf("7", "5", "8", "1"), "5")
+            )
+        )
+    )
+
+    val en = listOf(
+        Story(
+            "The cat and number 3", "🐱", Lang.EN,
+            "Great job! The story is over. The cat is very happy!",
+            listOf(
+                StoryStep("The little cat lost its lucky number. Help it find number three!", "🐱", listOf("1", "3", "5", "7"), "3"),
+                StoryStep("Super! Now the cat is hungry. Find the letter C, like cat!", "😺", listOf("M", "C", "P", "T"), "C"),
+                StoryStep("The cat wants five fish. Find number five!", "🐟", listOf("2", "8", "5", "9"), "5")
+            )
+        ),
+        Story(
+            "Leo's rocket", "🚀", Lang.EN,
+            "Great job! The rocket flew all the way to the moon. You are a champion!",
+            listOf(
+                StoryStep("Leo is getting his rocket ready. Find the letter R, like rocket!", "🚀", listOf("R", "S", "F", "T"), "R"),
+                StoryStep("Well done! The rocket needs four stars. Find number four!", "⭐", listOf("4", "3", "7", "1"), "4"),
+                StoryStep("Last step! Find the letter M, like moon!", "🌙", listOf("J", "I", "N", "M"), "M")
             )
         )
     )

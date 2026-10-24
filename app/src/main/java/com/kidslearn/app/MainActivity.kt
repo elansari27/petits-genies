@@ -76,8 +76,14 @@ class MainActivity : ComponentActivity() {
             }
 
             // Arabe : toute l'interface se lit de droite à gauche
+            // Exception : les jeux "géométriques" (relier, glisser, tracer...) restent en gauche-droite,
+            // car Compose inverse les offset() en RTL alors que les doigts/Canvas restent absolus.
+            val geometric = screen == Screen.CONNECT || screen == Screen.MATCH ||
+                screen == Screen.BASKET || screen == Screen.TRACE ||
+                screen == Screen.TREASURE || screen == Screen.BUBBLES
             val direction =
-                if (lang == Lang.AR && screen != Screen.HOME) LayoutDirection.Rtl else LayoutDirection.Ltr
+                if (lang == Lang.AR && screen != Screen.HOME && !geometric) LayoutDirection.Rtl
+                else LayoutDirection.Ltr
 
             KidsTheme {
                 CompositionLocalProvider(LocalLayoutDirection provides direction) {
@@ -94,13 +100,10 @@ class MainActivity : ComponentActivity() {
                                 prefs.edit().putBoolean("music", musicOn).apply()
                                 sound.setMusic(musicOn)
                             },
-                            onPlay = {
-                                sound.playClick()
-                                screen = Screen.MENU
-                            },
                             onPickLang = {
                                 sound.playClick()
                                 lang = it
+                                screen = Screen.MENU
                             }
                         )
 
@@ -119,13 +122,35 @@ class MainActivity : ComponentActivity() {
                             items = Content.letters(lang),
                             lang = lang,
                             sound = sound,
-                            onBack = { screen = Screen.MENU }
+                            onBack = { screen = Screen.MENU },
+                            onTest = { screen = Screen.QUIZ_LETTERS }
                         )
 
                         Screen.LEARN_NUMBERS -> LearnScreen(
                             items = Content.numbers(lang),
                             lang = lang,
                             sound = sound,
+                            onBack = { screen = Screen.MENU },
+                            onTest = { screen = Screen.QUIZ_NUMBERS }
+                        )
+
+                        Screen.HIDE_LETTERS -> HideSeekScreen(
+                            pool = Content.letters(lang),
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
+                            onBack = { screen = Screen.MENU }
+                        )
+
+                        Screen.HIDE_NUMBERS -> HideSeekScreen(
+                            pool = Content.numbers(lang),
+                            lang = lang,
+                            sound = sound,
+                            stars = balance,
+                            childName = profile.name,
+                            onStar = { addStar() },
                             onBack = { screen = Screen.MENU }
                         )
 
@@ -317,5 +342,6 @@ enum class Screen {
     LEARN_LETTERS, LEARN_NUMBERS, QUIZ_LETTERS, QUIZ_NUMBERS, COUNT,
     COLORS, SHAPES, MEMORY, FIRST_LETTER, PARENTS,
     BIG_SMALL, CONNECT, BASKET,
-    TRACE, MATCH, STORY, TREASURE, BUBBLES, STICKERS
+    TRACE, MATCH, STORY, TREASURE, BUBBLES, STICKERS,
+    HIDE_LETTERS, HIDE_NUMBERS
 }

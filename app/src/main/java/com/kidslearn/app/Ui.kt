@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,12 +81,6 @@ fun KidsTheme(content: @Composable () -> Unit) {
         colorScheme = lightColorScheme(primary = Purple, background = Cream),
         content = content
     )
-}
-
-fun t(lang: Lang, fr: String, ar: String): String = when (lang) {
-    Lang.FR -> fr
-    Lang.AR -> ar
-    Lang.MIX -> "$fr\n$ar"
 }
 
 // ---------- Briques réutilisables ----------
@@ -190,7 +185,6 @@ fun HomeScreen(
     sound: SoundManager,
     musicOn: Boolean,
     onToggleMusic: () -> Unit,
-    onPlay: () -> Unit,
     onPickLang: (Lang) -> Unit
 ) {
     LaunchedEffect(Unit) {
@@ -251,40 +245,24 @@ fun HomeScreen(
                 fontWeight = FontWeight.ExtraBold,
                 color = Pink
             )
-            Spacer(Modifier.height(20.dp))
-            BouncyBox(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(86.dp),
-                color = Purple,
-                onClick = onPlay
-            ) {
-                Text("▶  Jouer", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-            }
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "Choisis ta langue",
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF3B2A8C)
-            )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(28.dp))
 
             val options = listOf(
                 Triple(Lang.FR, "🇫🇷  Français", Blue),
                 Triple(Lang.AR, "العربية  🌙", Green),
+                Triple(Lang.EN, "🇬🇧  English", Pink),
                 Triple(Lang.MIX, "Français + العربية", Orange)
             )
             options.forEach { (lang, label, color) ->
                 BouncyBox(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(68.dp)
-                        .padding(vertical = 6.dp),
+                        .height(84.dp)
+                        .padding(vertical = 5.dp),
                     color = color,
                     onClick = { onPickLang(lang) }
                 ) {
-                    Text(label, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    Text(label, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                 }
             }
         }
@@ -326,6 +304,8 @@ fun MenuScreen(
         MenuEntry(Screen.BIG_SMALL, "🐘", t(lang, "Petit ou grand", "صغير أم كبير؟")),
         MenuEntry(Screen.CONNECT, "🔗", t(lang, "Relier", "اربط")),
         MenuEntry(Screen.BASKET, "🧺", t(lang, "Le panier", "السلة")),
+        MenuEntry(Screen.HIDE_LETTERS, "🙈", t(lang, "Cache-cache lettres", "غميضة الحروف")),
+        MenuEntry(Screen.HIDE_NUMBERS, "🙉", t(lang, "Cache-cache chiffres", "غميضة الأرقام")),
         MenuEntry(Screen.QUIZ_LETTERS, "🎯", t(lang, "Écoute les lettres", "اسمع الحروف")),
         MenuEntry(Screen.QUIZ_NUMBERS, "🎲", t(lang, "Écoute les chiffres", "اسمع الأرقام")),
         MenuEntry(Screen.MEMORY, "🃏", t(lang, "Memory", "الذاكرة")),
@@ -340,16 +320,8 @@ fun MenuScreen(
     val ctx = LocalContext.current
     GameBackground {
         Column(Modifier.fillMaxSize()) {
-            TopBar(title = t(lang, "Mon parcours", "مساري"), stars = stars, onBack = onBack)
-            Text(
-                t(lang, "Choisis une aventure", "اختر مغامرة"),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Purple,
-                textAlign = TextAlign.Center
-            )
-            if (lang != Lang.FR && !sound.arabicOk) {
+            TopBar(title = t(lang, "On joue !", "هيا نلعب!"), stars = stars, onBack = onBack)
+            if ((lang == Lang.AR || lang == Lang.MIX) && !sound.arabicOk) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -426,7 +398,13 @@ fun ArabicForms(symbol: String) {
 }
 
 @Composable
-fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -> Unit) {
+fun LearnScreen(
+    items: List<Item>,
+    lang: Lang,
+    sound: SoundManager,
+    onBack: () -> Unit,
+    onTest: (() -> Unit)? = null
+) {
     var index by remember { mutableIntStateOf(0) }
     val item = items[index]
     val pop = remember { Animatable(1f) }
@@ -485,6 +463,29 @@ fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -
                         index = (index - 1 + items.size) % items.size
                     }
                 ) { Text(if (rtl) "➡️" else "⬅️", fontSize = 40.sp) }
+                if (onTest != null) {
+                    // Après l'apprentissage : le test ! (met en valeur le bouton à la dernière carte)
+                    BouncyBox(
+                        modifier = Modifier
+                            .height(88.dp)
+                            .defaultMinSize(minWidth = 88.dp)
+                            .padding(horizontal = 4.dp),
+                        color = if (index == items.size - 1) Green else Orange,
+                        shape = RoundedCornerShape(44.dp),
+                        onClick = {
+                            sound.playClick()
+                            onTest()
+                        }
+                    ) {
+                        Text(
+                            "🎯 " + t(lang, "Test !", "اختبار!", "Test!"),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
                 BouncyBox(
                     modifier = Modifier.size(88.dp),
                     color = Purple,
@@ -504,12 +505,14 @@ fun LearnScreen(items: List<Item>, lang: Lang, sound: SoundManager, onBack: () -
 fun praise(lang: Lang): String = when (lang) {
     Lang.FR -> Content.praiseFr.random()
     Lang.AR -> Content.praiseAr.random()
+    Lang.EN -> Content.praiseEn.random()
     Lang.MIX -> (Content.praiseFr + Content.praiseAr).random()
 }
 
 fun retry(lang: Lang): String = when (lang) {
     Lang.FR -> Content.retryFr.random()
     Lang.AR -> Content.retryAr.random()
+    Lang.EN -> Content.retryEn.random()
     Lang.MIX -> (Content.retryFr + Content.retryAr).random()
 }
 
@@ -654,14 +657,18 @@ fun CountScreen(
             else -> lang
         }
     }
-    val numberItems = if (roundLang == Lang.AR) Content.arDigitItems else Content.frDigits
+    val numberItems = Content.digitsFor(roundLang)
     val choices = remember(round) {
         ((1..10).filter { it != count }.shuffled().take(2) + count).shuffled()
     }
     var solved by remember(round) { mutableStateOf(false) }
     var feedback by remember(round) { mutableStateOf("") }
 
-    val question = if (roundLang == Lang.AR) "كم عددها؟" else "Combien y en a-t-il ?"
+    val question = when (roundLang) {
+        Lang.AR -> "كم عددها؟"
+        Lang.EN -> "How many are there?"
+        else -> "Combien y en a-t-il ?"
+    }
 
     LaunchedEffect(round) {
         delay(300)
@@ -697,8 +704,7 @@ fun CountScreen(
                                     sound.playStar()
                                     val n = i + 1
                                     sound.speak(
-                                        if (roundLang == Lang.AR) Content.arDigitItems[n].spoken
-                                        else Content.frDigits[n].spoken,
+                                        Content.digitsFor(roundLang)[n].spoken,
                                         roundLang
                                     )
                                 })

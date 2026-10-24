@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -52,6 +53,7 @@ class SoundManager(context: Context) {
                 tts?.setPitch(1.15f)
                 val r = tts?.isLanguageAvailable(Lang.AR.locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
                 arabicOk = r >= TextToSpeech.LANG_AVAILABLE
+                installListener()
             } else {
                 arabicOk = false
             }
@@ -60,12 +62,105 @@ class SoundManager(context: Context) {
 
     // ---------- Voix ----------
 
+    private val pending = ArrayDeque<Pair<String, Lang>>()
+    private val speechLock = Any()
+    @Volatile private var generation = 0
+
+    private fun installListener() {
+        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String) {}
+            override fun onDone(utteranceId: String) { next(utteranceId) }
+            override fun onError(utteranceId: String) { next(utteranceId) }
+        })
+    }
+
+    private fun next(utteranceId: String) {
+        val g = utteranceId.substringBefore('-').removePrefix("g").toIntOrNull() ?: return
+        if (g != generation) return // ancienne phrase interrompue : on l'ignore
+        speakNext(g)
+    }
+
+    private fun speakNext(g: Int) {
+        val engine = tts ?: return
+        val seg: Pair<String, Lang>
+        synchronized(speechLock) {
+            if (g != generation) return
+            seg = pending.removeFirstOrNull() ?: return
+        }
+        val (text, lang) = seg
+        val avail = engine.isLanguageAvailable(lang.locale)
+        if (avail < TextToSpeech.LANG_AVAILABLE) {
+            if (lang == Lang.AR) arabicOk = false
+            speakNext(g) // voix absente : on passe au morceau suivant
+            return
+        }
+        engine.language = lang.locale
+        engine.setSpeechRate(if (lang == Lang.AR) 0.8f else 0.85f)
+        val r = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "g$g-${System.nanoTime()}")
+        if (r != TextToSpeech.SUCCESS) speakNext(g)
+    }
+
+    /**
+     * Lit un texte à voix haute. Le texte est nettoyé (emojis retirés) puis découpé par
+     * écriture : l'arabe est lu avec la voix arabe, le latin avec la voix française ou anglaise.
+     * [lang] indique la langue voulue ; en mode MIX le français sert pour le latin.
+     */
     fun speak(text: String, lang: Lang) {
         if (!ttsReady) return
         val engine = tts ?: return
-        val locale = if (lang == Lang.AR) Lang.AR.locale else Lang.FR.locale
-        engine.language = locale
-        engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "kids-${System.nanoTime()}")
+        val segs = splitSegments(text, lang)
+        val g: Int
+        synchronized(speechLock) {
+            generation++
+            g = generation
+            pending.clear()
+            pending.addAll(segs)
+        }
+        try { engine.stop() } catch (_: Exception) {}
+        speakNext(g)
+    }
+
+    fun stopSpeech() {
+        synchronized(speechLock) { generation++; pending.clear() }
+        try { tts?.stop() } catch (_: Exception) {}
+    }
+
+    private fun isArabicChar(c: Char): Boolean =
+        c in '\u0600'..'\u06FF' || c in '\u0750'..'\u077F' ||
+            c in '\uFB50'..'\uFDFF' || c in '\uFE70'..'\uFEFF'
+
+    private fun splitSegments(raw: String, hint: Lang): List<Pair<String, Lang>> {
+        val latin = if (hint == Lang.EN) Lang.EN else Lang.FR
+        val out = ArrayList<Pair<String, Lang>>()
+        var sb = StringBuilder()
+        var cur: Lang? = null
+        fun flush() {
+            val txt = sb.toString().trim()
+            if (txt.any { it.isLetterOrDigit() }) {
+                out.add(txt to (cur ?: if (hint == Lang.AR) Lang.AR else latin))
+            }
+            sb = StringBuilder()
+            cur = null
+        }
+        for (ch in raw) {
+            if (ch == '\u0640' || ch == '\u200D' || ch in '\uFE00'..'\uFE0F') continue
+            val isMark = Character.getType(ch) == Character.NON_SPACING_MARK.toInt()
+            val keep = ch.isLetterOrDigit() || ch.isWhitespace() || isMark || ch in ".,!?;:'’-،؟"
+            if (!keep) continue
+            val script: Lang? = when {
+                isMark -> null
+                isArabicChar(ch) && ch.isLetter() -> Lang.AR
+                ch.isLetter() -> latin
+                else -> null
+            }
+            if (script != null) {
+                if (cur != null && cur != script) flush()
+                cur = script
+            }
+            sb.append(ch)
+        }
+        flush()
+        return out
     }
 
     // ---------- Vibrations ----------
@@ -169,7 +264,7 @@ class SoundManager(context: Context) {
 
     fun release() {
         stopMusic()
-        tts?.stop()
+        stopSpeech()
         tts?.shutdown()
         tts = null
     }

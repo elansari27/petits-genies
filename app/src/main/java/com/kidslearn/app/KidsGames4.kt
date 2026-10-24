@@ -506,7 +506,7 @@ fun FirstLetterScreen(
     }
 }
 
-// ---------- Zone parents (protégée par un calcul aléatoire) ----------
+// ---------- Zone parents (protégée par un code) ----------
 
 @Composable
 fun ParentScreen(
@@ -522,10 +522,9 @@ fun ParentScreen(
     onBack: () -> Unit
 ) {
     var unlocked by remember { mutableStateOf(false) }
-    val left = remember { (2..8).random() }
-    val right = remember { (1..6).random() }
-    val expected = left + right
-    var answer by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
+    val gateA = remember { (3..9).random() }
+    val gateB = remember { (3..9).random() }
     var confirmReset by remember { mutableStateOf(false) }
 
     var name by remember { mutableStateOf(profile.name) }
@@ -543,48 +542,62 @@ fun ParentScreen(
                     fontSize = 56.sp
                 )
                 Text(
-                    t(lang, "Petit calcul pour les parents :", "حساب صغير للآباء :"),
+                    t(lang, "Question pour les grands : $gateA + $gateB = ?", "سؤال للكبار: $gateA + $gateB = ؟", "Grown-ups only: $gateA + $gateB = ?"),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Purple
                 )
                 Text(
-                    "$left + $right = ?",
-                    fontSize = 32.sp,
+                    "•".repeat(pin.length).ifEmpty { " " },
+                    fontSize = 40.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Purple,
+                    color = Pink,
                     modifier = Modifier.height(52.dp)
                 )
-                OutlinedTextField(
-                    value = answer,
-                    onValueChange = { answer = it.filter(Char::isDigit).take(2) },
-                    label = { Text(t(lang, "Réponse", "الإجابة")) },
-                    singleLine = true,
-                    modifier = Modifier.width(180.dp),
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        fontSize = 30.sp,
-                        textAlign = TextAlign.Center
-                    )
-                )
-                Spacer(Modifier.height(12.dp))
-                BouncyBox(
-                    modifier = Modifier.width(180.dp).height(62.dp),
-                    color = Green,
-                    onClick = {
-                        sound.playClick()
-                        if (answer.toIntOrNull() == expected) {
-                            unlocked = true
-                            sound.playSuccess()
-                        } else {
-                            answer = ""
-                            sound.playError()
+                val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "✓")
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    keys.chunked(3).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            row.forEach { k ->
+                                BouncyBox(
+                                    modifier = Modifier.size(84.dp),
+                                    color = when (k) {
+                                        "✓" -> Green
+                                        "C" -> Pink
+                                        else -> Purple
+                                    },
+                                    shape = CircleShape,
+                                    onClick = {
+                                        sound.playClick()
+                                        when (k) {
+                                            "C" -> pin = ""
+                                            "✓" -> if (pin == (gateA + gateB).toString()) {
+                                                unlocked = true
+                                                sound.playSuccess()
+                                            } else {
+                                                pin = ""
+                                                sound.playError()
+                                            }
+                                            else -> if (pin.length < 2) pin += k
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        k,
+                                        fontSize = 30.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
                         }
                     }
-                ) {
-                    Text("✓  OK", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                 }
                 Text(
-                    t(lang, "Le calcul change à chaque ouverture.", "يتغير الحساب عند كل فتح."),
+                    t(lang, "Code par défaut : 1234 (modifiable ci-dessous)", "الرمز الافتراضي: 1234"),
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -657,7 +670,7 @@ fun ParentScreen(
                     color = Green,
                     onClick = {
                         sound.playSuccess()
-                        onSaveProfile(ChildProfile(name.trim().ifEmpty { "Ilyas" }, avatar, age, profile.pin))
+                        onSaveProfile(ChildProfile(name.trim().ifEmpty { "Ilyas" }, avatar, age))
                     }
                 ) {
                     Text(

@@ -114,16 +114,23 @@ private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? 
     val h = size.height
     val pixels = IntArray(w * h)
     bmp.getPixels(pixels, 0, w, 0, 0, w, h)
-    val step = (13 * density).toInt().coerceAtLeast(6)
-    val points = ArrayList<Offset>()
-    var y = step / 2
-    while (y < h) {
-        var x = step / 2
-        while (x < w) {
-            if ((pixels[y * w + x] ushr 24) > 128) points.add(Offset(x.toFloat(), y.toFloat()))
-            x += step
+    // Pas de grille adapté à la taille du symbole ; on le réduit tant qu'il y a trop peu de points
+    // (lettres fines en arabe) pour que le tracé ne reste jamais "bloqué".
+    var step = (size.height * 0.05f).toInt().coerceAtLeast((8 * density).toInt()).coerceAtLeast(6)
+    var points = ArrayList<Offset>()
+    while (true) {
+        points = ArrayList()
+        var y = step / 2
+        while (y < h) {
+            var x = step / 2
+            while (x < w) {
+                if ((pixels[y * w + x] ushr 24) > 128) points.add(Offset(x.toFloat(), y.toFloat()))
+                x += step
+            }
+            y += step
         }
-        y += step
+        if (points.size >= 14 || step <= 4) break
+        step = (step * 0.75f).toInt().coerceAtLeast(4)
     }
     return GlyphData(bmp.asImageBitmap(), points)
 }
@@ -158,7 +165,7 @@ fun TraceScreen(
         (Content.letters(lang) + Content.numbers(lang))
             .map { it.copy(symbol = it.symbol.replace("ـ", "")) }
     }
-    val rtl = lang == Lang.AR
+    val rtl = false // écran forcé en gauche-droite
     var index by remember { mutableIntStateOf(0) }
     val item = items[index]
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
@@ -168,11 +175,13 @@ fun TraceScreen(
     var count by remember(glyph) { mutableIntStateOf(0) }
     var done by remember(index) { mutableStateOf(false) }
     val trail = remember { mutableStateListOf<Offset>() }
-    val hitRadius = 26f * density
-    // Avant : 80% de la zone avec une grosse hitbox = "Bravo" après 2 coups de doigt.
-    // Maintenant : 90% minimum de points réellement couverts (et jamais plus que le nombre de points).
+    val hitRadius = 30f * density
+    // Tolérant pour un enfant de 4-5 ans : 75 % des points suffisent (jamais moins de 6),
+    // et 60 % suffisent quand l'enfant lève le doigt.
+    val total = glyph?.targets?.size ?: 0
     val needed = if (glyph == null) Int.MAX_VALUE
-    else ((glyph.targets.size * 0.90f).toInt().coerceAtLeast(6)).coerceAtMost(glyph.targets.size)
+    else ((total * 0.75f).toInt().coerceAtLeast(6)).coerceAtMost(total)
+    val liftNeeded = ((total * 0.60f).toInt().coerceAtLeast(5)).coerceAtMost(total)
 
     fun touch(p: Offset) {
         trail.add(p)
@@ -230,6 +239,7 @@ fun TraceScreen(
                                     }
                                 } while (ev.changes.any { it.pressed })
                                 trail.clear()
+                                if (!done && glyph != null && count >= liftNeeded) done = true
                             }
                         }
                 ) {
@@ -240,6 +250,7 @@ fun TraceScreen(
                         val r = 13f * density
                         g.targets.forEachIndexed { i, o ->
                             if (covered[i]) drawCircle(rainbow[i % rainbow.size], radius = r, center = o)
+                            else drawCircle(Orange.copy(alpha = 0.35f), radius = 4f * density, center = o)
                         }
                     }
                     trail.forEachIndexed { i, o ->
@@ -487,6 +498,7 @@ fun StoryScreen(
         when (lang) {
             Lang.FR -> Stories.fr
             Lang.AR -> Stories.ar
+            Lang.EN -> Stories.en
             Lang.MIX -> Stories.fr + Stories.ar
         }
     }
@@ -730,6 +742,7 @@ fun TreasureScreen(
         when (lang) {
             Lang.FR -> sound.speak("Trouve : $names", Lang.FR)
             Lang.AR -> sound.speak("جد: $names", Lang.AR)
+            Lang.EN -> sound.speak("Find: $names", Lang.EN)
             Lang.MIX -> sound.speak("Trouve les trois lettres !", Lang.FR)
         }
     }
