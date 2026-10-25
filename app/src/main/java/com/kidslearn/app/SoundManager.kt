@@ -9,6 +9,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -46,16 +47,58 @@ class SoundManager(context: Context) {
     }
 
     init {
-        tts = TextToSpeech(appContext) { status ->
-            ttsReady = status == TextToSpeech.SUCCESS
-            if (ttsReady) {
-                tts?.setSpeechRate(0.85f) // un peu lent pour un enfant de 5 ans
-                tts?.setPitch(1.15f)
-                val r = tts?.isLanguageAvailable(Lang.AR.locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
-                arabicOk = r >= TextToSpeech.LANG_AVAILABLE
-                installListener()
+        // Moteur Google en priorité (meilleure voix arabe) ; sinon moteur par défaut du téléphone.
+        startEngine(preferGoogle = true)
+    }
+
+    private fun startEngine(preferGoogle: Boolean) {
+        ttsReady = false
+        val listener = TextToSpeech.OnInitListener { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                onEngineReady()
+            } else if (preferGoogle) {
+                try { tts?.shutdown() } catch (_: Exception) {}
+                startEngine(preferGoogle = false) // Google TTS absent : moteur par défaut
             } else {
+                ttsReady = false
                 arabicOk = false
+            }
+        }
+        tts = try {
+            if (preferGoogle) TextToSpeech(appContext, listener, "com.google.android.tts")
+            else TextToSpeech(appContext, listener)
+        } catch (_: Exception) {
+            null
+        }
+        if (tts == null && preferGoogle) startEngine(preferGoogle = false)
+    }
+
+    private fun onEngineReady() {
+        ttsReady = true
+        tts?.setPitch(1.1f)
+        voiceCache.clear()
+        val r = tts?.isLanguageAvailable(Lang.AR.locale) ?: TextToSpeech.LANG_NOT_SUPPORTED
+        arabicOk = r >= TextToSpeech.LANG_AVAILABLE
+        installListener()
+    }
+
+    /** Choisit la meilleure voix installée pour une langue : hors-ligne, haute qualité, bien installée. */
+    private val voiceCache = HashMap<String, Voice?>()
+
+    private fun bestVoice(engine: TextToSpeech, lang: Lang): Voice? {
+        val code = lang.locale.language
+        return voiceCache.getOrPut(code) {
+            try {
+                val all = engine.voices?.filter { it.locale.language == code } ?: emptyList()
+                all.sortedWith(
+                    compareBy<Voice>(
+                        { it.features?.contains("notInstalled") == true },
+                        { it.isNetworkConnectionRequired },
+                        { -it.quality }
+                    )
+                ).firstOrNull()
+            } catch (_: Exception) {
+                null
             }
         }
     }
@@ -95,6 +138,7 @@ class SoundManager(context: Context) {
             return
         }
         engine.language = lang.locale
+        bestVoice(engine, lang)?.let { engine.setVoice(it) }
         engine.setSpeechRate(if (lang == Lang.AR) 0.8f else 0.85f)
         val r = engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "g$g-${System.nanoTime()}")
         if (r != TextToSpeech.SUCCESS) speakNext(g)
@@ -125,6 +169,13 @@ class SoundManager(context: Context) {
         try { tts?.stop() } catch (_: Exception) {}
     }
 
+    /** Les chiffres 0-10 sont remplacés par leur mot : la voix ne se trompe plus de langue. */
+    private fun digitsToWords(text: String, lang: Lang): String =
+        Regex("\\d+").replace(text) { m ->
+            val n = m.value.toIntOrNull()
+            if (n != null && n in 0..10) Content.digitsFor(lang)[n].spoken else m.value
+        }
+
     private fun isArabicChar(c: Char): Boolean =
         c in '\u0600'..'\u06FF' || c in '\u0750'..'\u077F' ||
             c in '\uFB50'..'\uFDFF' || c in '\uFE70'..'\uFEFF'
@@ -137,7 +188,8 @@ class SoundManager(context: Context) {
         fun flush() {
             val txt = sb.toString().trim()
             if (txt.any { it.isLetterOrDigit() }) {
-                out.add(txt to (cur ?: if (hint == Lang.AR) Lang.AR else latin))
+                val l = cur ?: if (hint == Lang.AR) Lang.AR else latin
+                out.add(digitsToWords(txt, l) to l)
             }
             sb = StringBuilder()
             cur = null

@@ -91,7 +91,7 @@ import kotlinx.coroutines.launch
 //  1. TRACER : suivre la lettre ou le chiffre avec le doigt
 // =====================================================================
 
-private class GlyphData(val image: ImageBitmap, val targets: List<Offset>)
+private class GlyphData(val image: ImageBitmap, val targets: List<Offset>, val step: Int)
 
 /** Dessine le symbole dans une image et repère des points à "colorier" avec le doigt. */
 private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? {
@@ -132,7 +132,7 @@ private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? 
         if (points.size >= 14 || step <= 4) break
         step = (step * 0.75f).toInt().coerceAtLeast(4)
     }
-    return GlyphData(bmp.asImageBitmap(), points)
+    return GlyphData(bmp.asImageBitmap(), points, step)
 }
 
 private val rainbow = listOf(Pink, Orange, Yellow, Green, Blue, Purple)
@@ -175,13 +175,35 @@ fun TraceScreen(
     var count by remember(glyph) { mutableIntStateOf(0) }
     var done by remember(index) { mutableStateOf(false) }
     val trail = remember { mutableStateListOf<Offset>() }
-    val hitRadius = 30f * density
-    // Tolérant pour un enfant de 4-5 ans : 75 % des points suffisent (jamais moins de 6),
-    // et 60 % suffisent quand l'enfant lève le doigt.
+    // Le doigt doit VRAIMENT passer sur le trait : rayon de prise = un peu plus qu'un pas de grille
+    // (avant : 30 dp = un seul coup de doigt couvrait la moitié de la lettre -> "Bravo" trop tôt).
+    val hitRadius = if (glyph == null) 0f else maxOf(glyph.step * 1.15f, 12f * density)
     val total = glyph?.targets?.size ?: 0
     val needed = if (glyph == null) Int.MAX_VALUE
-    else ((total * 0.75f).toInt().coerceAtLeast(6)).coerceAtMost(total)
-    val liftNeeded = ((total * 0.60f).toInt().coerceAtLeast(5)).coerceAtMost(total)
+    else ((total * 0.85f).toInt().coerceAtLeast(8)).coerceAtMost(total)
+    // Étendue du tracé : le doigt doit avoir parcouru l'essentiel de la hauteur ET de la largeur du symbole
+    // (sauf pour les symboles étroits comme 1 ou ا, où la largeur n'est pas exigée).
+    fun spreadOk(): Boolean {
+        val g = glyph ?: return false
+        if (g.targets.isEmpty()) return false
+        var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE
+        var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
+        var cMinX = Float.MAX_VALUE; var cMaxX = -Float.MAX_VALUE
+        var cMinY = Float.MAX_VALUE; var cMaxY = -Float.MAX_VALUE
+        for (i in g.targets.indices) {
+            val o = g.targets[i]
+            minX = minOf(minX, o.x); maxX = maxOf(maxX, o.x)
+            minY = minOf(minY, o.y); maxY = maxOf(maxY, o.y)
+            if (covered[i]) {
+                cMinX = minOf(cMinX, o.x); cMaxX = maxOf(cMaxX, o.x)
+                cMinY = minOf(cMinY, o.y); cMaxY = maxOf(cMaxY, o.y)
+            }
+        }
+        if (cMinX > cMaxX) return false
+        val wOk = (maxX - minX) < g.step * 3 || (cMaxX - cMinX) >= (maxX - minX) * 0.75f
+        val hOk = (maxY - minY) < g.step * 3 || (cMaxY - cMinY) >= (maxY - minY) * 0.75f
+        return wOk && hOk
+    }
 
     fun touch(p: Offset) {
         trail.add(p)
@@ -199,8 +221,8 @@ fun TraceScreen(
             val before = count
             count += gained
             if (count / 8 != before / 8) sound.playStar()
-            if (count >= needed) done = true
         }
+        if (!done && count >= needed && spreadOk()) done = true
     }
 
     LaunchedEffect(done) {
@@ -239,7 +261,6 @@ fun TraceScreen(
                                     }
                                 } while (ev.changes.any { it.pressed })
                                 trail.clear()
-                                if (!done && glyph != null && count >= liftNeeded) done = true
                             }
                         }
                 ) {

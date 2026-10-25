@@ -18,6 +18,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -226,7 +230,7 @@ fun HomeScreen(
                 }
                 Spacer(Modifier.height(8.dp))
             }
-            Mascot(avatar, 110)
+            Zizou(170.dp)
             Text(
                 "Salut $childName ! 👋",
                 fontSize = 30.sp,
@@ -304,6 +308,10 @@ fun MenuScreen(
         MenuEntry(Screen.BIG_SMALL, "🐘", t(lang, "Petit ou grand", "صغير أم كبير؟")),
         MenuEntry(Screen.CONNECT, "🔗", t(lang, "Relier", "اربط")),
         MenuEntry(Screen.BASKET, "🧺", t(lang, "Le panier", "السلة")),
+        MenuEntry(Screen.ODD, "🔍", t(lang, "Trouver l'intrus", "جد الغريب")),
+        MenuEntry(Screen.SORT, "🧺", t(lang, "Tri", "الفرز")),
+        MenuEntry(Screen.LOGIC, "🧠", t(lang, "Logique", "المنطق")),
+        MenuEntry(Screen.SHADOW, "🌑", t(lang, "Puzzles : ombres", "ألغاز الظلال")),
         MenuEntry(Screen.HIDE_LETTERS, "🙈", t(lang, "Cache-cache lettres", "غميضة الحروف")),
         MenuEntry(Screen.HIDE_NUMBERS, "🙉", t(lang, "Cache-cache chiffres", "غميضة الأرقام")),
         MenuEntry(Screen.QUIZ_LETTERS, "🎯", t(lang, "Écoute les lettres", "اسمع الحروف")),
@@ -340,33 +348,39 @@ fun MenuScreen(
                     )
                 }
             }
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(entries.size) { index ->
-                    val e = entries[index]
-                    BouncyBox(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(130.dp),
-                        color = tileColors[index % tileColors.size],
-                        onClick = { onPick(e.screen) }
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(e.emoji, fontSize = 44.sp)
-                            Text(
-                                e.label,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
+            // Menu en nid d'abeille : rangées de 2 hexagones, une rangée sur deux décalée.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val gap = 6.dp
+                val tileW = (maxWidth - 16.dp - gap * 2) / 2.5f
+                val tileH = tileW * 1.1547f
+                val rowShift = (tileW + gap) / 2f
+                val rows = entries.chunked(2)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    rows.forEachIndexed { r, row ->
+                        Row(
+                            modifier = Modifier
+                                .offset(x = if (r % 2 == 0) -rowShift / 2f else rowShift / 2f)
+                                .height(tileH * 0.75f),
+                            horizontalArrangement = Arrangement.spacedBy(gap)
+                        ) {
+                            row.forEachIndexed { c, e ->
+                                HexTile(
+                                    emoji = e.emoji,
+                                    label = e.label,
+                                    color = tileColors[(r * 2 + c) % tileColors.size],
+                                    width = tileW,
+                                    onClick = { onPick(e.screen) }
+                                )
+                            }
                         }
                     }
+                    Spacer(Modifier.height(tileH * 0.25f + 16.dp))
                 }
             }
         }

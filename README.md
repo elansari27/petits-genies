@@ -1,7 +1,15 @@
-# Petits Génies (KidsLearn) — v4
+# Petits Génies (KidsLearn) — v5
 
 Application éducative Android pour enfants de 4-5 ans : lettres et chiffres en **français, arabe, anglais** et mode mixte FR+AR.
 Aucune publicité, aucun achat intégré, aucune connexion Internet requise (permission : vibration uniquement).
+
+## Nouveautés v5
+- **Voix arabe avancée** : moteur Google TTS demandé en priorité (repli sur le moteur du téléphone), choix automatique de la meilleure voix installée par langue (hors-ligne, haute qualité), découpage du texte par écriture, chiffres lus en mots dans la langue de la phrase, déclaration `<queries>` pour que Android 11+ voie les moteurs vocaux.
+- **Tracé** : plus de « Bravo » prématuré : le doigt doit réellement passer sur 85 % du trait et couvrir la hauteur et la largeur du symbole.
+- **Mascotte originale Zizou** (dessinée dans l'appli) sur l'accueil.
+- **Menu en hexagones** (nid d'abeille).
+- **Nouveaux jeux** : Trouver l'intrus, Tri, Logique, Puzzles-ombres.
+- Confettis du cache-cache corrigés (s'affichent sur tout l'écran).
 
 ## Nouveautés v4
 - **Chiffres européens uniquement** (0 1 2 3…) dans toutes les langues, y compris en arabe.

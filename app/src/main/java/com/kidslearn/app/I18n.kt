@@ -67,6 +67,7 @@ object Tr {
         "Test : lettres" to "Test: letters",
         "Test : chiffres" to "Test: numbers",
         "Cache-cache lettres" to "Hide & seek: letters",
-        "Cache-cache chiffres" to "Hide & seek: numbers"
+        "Cache-cache chiffres" to "Hide & seek: numbers",
+        "Puzzles : ombres" to "Puzzles: shadows"
     )
 }

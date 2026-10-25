@@ -4,6 +4,14 @@
     <!-- Seule permission : les vibrations légères. Pas d'internet, pas de pub, pas de collecte. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Android 11+ : permet de voir les moteurs de synthèse vocale installés (Google, Samsung...) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <package android:name="com.google.android.tts" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

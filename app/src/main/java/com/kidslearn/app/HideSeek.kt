@@ -155,7 +155,7 @@ fun HideSeekScreen(
                     }
                 }
             }
-            if (found) ConfettiRain()
         }
+        if (found) ConfettiRain()
     }
 }

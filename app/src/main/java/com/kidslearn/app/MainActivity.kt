@@ -144,6 +144,11 @@ class MainActivity : ComponentActivity() {
                             onBack = { screen = Screen.MENU }
                         )
 
+                        Screen.ODD -> OddOneOutScreen(lang, sound, balance, profile.name, { addStar() }, { screen = Screen.MENU })
+                        Screen.SORT -> SortScreen(lang, sound, balance, profile.name, { addStar() }, { screen = Screen.MENU })
+                        Screen.LOGIC -> LogicScreen(lang, sound, balance, profile.name, { addStar() }, { screen = Screen.MENU })
+                        Screen.SHADOW -> ShadowScreen(lang, sound, balance, profile.name, { addStar() }, { screen = Screen.MENU })
+
                         Screen.HIDE_NUMBERS -> HideSeekScreen(
                             pool = Content.numbers(lang),
                             lang = lang,
@@ -343,5 +348,5 @@ enum class Screen {
     COLORS, SHAPES, MEMORY, FIRST_LETTER, PARENTS,
     BIG_SMALL, CONNECT, BASKET,
     TRACE, MATCH, STORY, TREASURE, BUBBLES, STICKERS,
-    HIDE_LETTERS, HIDE_NUMBERS
+    HIDE_LETTERS, HIDE_NUMBERS, ODD, SORT, LOGIC, SHADOW
 }
