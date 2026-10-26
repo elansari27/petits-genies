@@ -14,7 +14,8 @@ Aucune publicité, aucun achat intégré, aucune connexion Internet requise (per
 - **Le panier** : un tapis roulant, on choisit les objets de la famille demandée.
 - **Petit, moyen, grand** (3 tailles). **Relier** : le mot est lu, on le relie à son image.
 - **Moitié-moitié** : compléter l'image. **Animaux** : apprendre, écouter, cache-cache.
-- **Quitter ?** : question Oui / Non sur l'accueil. **Version** affichée dans la zone parents (6.0).
+- **Quitter ?** : question Oui / Non sur l'accueil. **Version** affichée dans la zone parents (6.1).
+- Confettis automatiques à chaque réussite dans tous les jeux (anciens et nouveaux).
 - Animations : apparition rebondissante des tuiles, secousse si faux, saut si juste.
 
 ## Nouveautés v5

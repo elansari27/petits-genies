@@ -78,7 +78,6 @@ fun GameShell(
             )
             content()
         }
-        if (confetti) ConfettiRain()
     }
 }
 

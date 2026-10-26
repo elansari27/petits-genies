@@ -25,6 +25,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,6 +67,19 @@ fun GameBackground(buddy: Boolean = true, content: @Composable () -> Unit) {
         ) {
             content()
             if (buddy) BuddyCompanion()
+            // Chaque réussite dans n'importe quel jeu déclenche une pluie de confettis
+            val snd = LocalSound.current
+            var burst by remember { mutableStateOf(0) }
+            var showConfetti by remember { mutableStateOf(false) }
+            LaunchedEffect(snd?.cheerTick ?: 0) {
+                if ((snd?.cheerTick ?: 0) > 0) {
+                    burst += 1
+                    showConfetti = true
+                    delay(2600)
+                    showConfetti = false
+                }
+            }
+            if (showConfetti) key(burst) { ConfettiRain() }
         }
     }
 }

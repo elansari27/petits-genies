@@ -20,7 +20,7 @@ data class Item(
 )
 
 /** Version affichée dans la zone parents (doit suivre build.gradle). */
-const val APP_VERSION = "6.0"
+const val APP_VERSION = "6.1"
 
 /** Marqueur utilisé pour reconnaître les chiffres dans [Item.emoji]. */
 const val NUMBER_EMOJI = "🔢"
