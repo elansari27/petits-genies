@@ -7,7 +7,23 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -158,6 +174,181 @@ fun Zizou(size: Dp = 160.dp, modifier: Modifier = Modifier, happy: Boolean = tru
             } else {
                 drawLine(dark, Offset(w * 0.44f, h * 0.57f), Offset(w * 0.56f, h * 0.57f), strokeWidth = w * 0.028f, cap = StrokeCap.Round)
             }
+        }
+    }
+}
+
+// =====================================================================
+//  Glisser-déposer : l'objet SUIT vraiment le doigt
+// =====================================================================
+
+/** Vrai si le point [p] (coordonnées écran) est dans [r]. */
+fun rectHas(r: androidx.compose.ui.geometry.Rect, p: Offset): Boolean =
+    p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom
+
+/**
+ * Un objet que l'enfant peut attraper et déplacer. Il suit le doigt (translation graphique,
+ * jamais inversée en arabe), grossit un peu pendant le déplacement, et revient en rebondissant
+ * si [onDrop] renvoie faux.
+ *
+ * [onDrop] reçoit la position du doigt (coordonnées écran) et la distance parcourue en pixels ;
+ * il renvoie vrai si le dépôt est accepté (l'objet reste alors où il a été lâché).
+ * [onTap] permet aussi de jouer d'un simple toucher (plus facile pour les petits).
+ */
+@Composable
+fun Draggable(
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onTap: (() -> Unit)? = null,
+    onDragState: (Boolean) -> Unit = {},
+    onDrop: (pointer: Offset, distance: Float) -> Boolean,
+    content: @Composable () -> Unit
+) {
+    // Toujours utiliser les dernières lambdas (le geste n'est pas relancé à chaque recomposition)
+    val curDrop by androidx.compose.runtime.rememberUpdatedState(onDrop)
+    val curTap by androidx.compose.runtime.rememberUpdatedState(onTap)
+    val curState by androidx.compose.runtime.rememberUpdatedState(onDragState)
+    val ax = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    val ay = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var origin by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(Offset.Zero) }
+    var startLocal by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(Offset.Zero) }
+    var dragging by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var startX by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0f) }
+    var startY by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0f) }
+    val grow by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (dragging) 1.18f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
+        label = "grow"
+    )
+
+    Box(
+        modifier = modifier.androidx_onPositioned { origin = it }
+    ) {
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    translationX = ax.value
+                    translationY = ay.value
+                }
+                .pointerInput(enabled) {
+                    if (enabled) {
+                        detectDragGestures(
+                            onDragStart = { local ->
+                                dragging = true
+                                curState(true)
+                                startLocal = local
+                                startX = ax.value
+                                startY = ay.value
+                            },
+                            onDragEnd = {
+                                dragging = false
+                                curState(false)
+                                val pointer = origin + Offset(ax.value, ay.value) + startLocal
+                                val dist = Offset(ax.value - startX, ay.value - startY).getDistance()
+                                val ok = curDrop(pointer, dist)
+                                if (!ok) {
+                                    scope.launch {
+                                        ax.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy))
+                                    }
+                                    scope.launch {
+                                        ay.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy))
+                                    }
+                                }
+                            },
+                            onDragCancel = {
+                                dragging = false
+                                curState(false)
+                                scope.launch { ax.animateTo(0f) }
+                                scope.launch { ay.animateTo(0f) }
+                            },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                scope.launch {
+                                    ax.snapTo(ax.value + amount.x)
+                                    ay.snapTo(ay.value + amount.y)
+                                }
+                            }
+                        )
+                    }
+                }
+                .pointerInput(enabled, onTap != null) {
+                    if (enabled && onTap != null) {
+                        detectTapGestures(onTap = { curTap?.invoke() })
+                    }
+                }
+        ) {
+            Box(Modifier.graphicsLayer { scaleX = grow; scaleY = grow }) { content() }
+        }
+    }
+}
+
+private fun Modifier.androidx_onPositioned(block: (Offset) -> Unit): Modifier =
+    this.onGloballyPositioned { block(it.positionInRoot()) }
+
+
+// =====================================================================
+//  Boîtes de dialogue ludiques
+// =====================================================================
+
+/** « Tu veux quitter ? » avec Zizou et deux gros boutons OUI / NON. */
+@Composable
+fun ExitDialog(onYes: () -> Unit, onNo: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xAA000000))
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .background(Color.White, RoundedCornerShape(36.dp))
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Zizou(130.dp, happy = false)
+            Text(
+                "Tu veux quitter ?\nهَلْ تُرِيدُ الخُرُوج؟\nQuit the app?",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF3B2A8C),
+                textAlign = TextAlign.Center
+            )
+            Row(
+                modifier = Modifier.padding(top = 18.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp)
+            ) {
+                BouncyBox(Modifier.size(width = 130.dp, height = 70.dp), Pink, RoundedCornerShape(35.dp), onYes) {
+                    Text("✅ Oui · نعم", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                }
+                BouncyBox(Modifier.size(width = 130.dp, height = 70.dp), Green, RoundedCornerShape(35.dp), onNo) {
+                    Text("❌ Non · لا", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+/** Bandeau « nouveau jeu » affiché entre deux jeux en mode surprise. */
+@Composable
+fun SwitchBanner() {
+    Box(Modifier.fillMaxSize().background(Color(0x88000000)), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier
+                .background(Color.White, RoundedCornerShape(36.dp))
+                .padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Zizou(140.dp)
+            Text(
+                "Nouveau jeu ! 🎲\nلُعْبَةٌ جَدِيدَة!\nNew game!",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF3B2A8C),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

@@ -19,6 +19,9 @@ data class Item(
     val lang: Lang
 )
 
+/** Version affichée dans la zone parents (doit suivre build.gradle). */
+const val APP_VERSION = "6.0"
+
 /** Marqueur utilisé pour reconnaître les chiffres dans [Item.emoji]. */
 const val NUMBER_EMOJI = "🔢"
 
@@ -82,35 +85,36 @@ object Content {
         Item("Z", "Z is for zebra", "Zebra", "🦓", Lang.EN)
     )
 
+    // Texte arabe entièrement voyellé (tashkeel) : la voix lit « جَمَل » (jamal) et non « جُمل ».
     private val arLetters = listOf(
-        Item("أ", "أَلِف. أرنب", "أرنب", "🐰", Lang.AR),
-        Item("ب", "باء. بطة", "بطة", "🦆", Lang.AR),
-        Item("ت", "تاء. تفاحة", "تفاحة", "🍎", Lang.AR),
-        Item("ث", "ثاء. ثعلب", "ثعلب", "🦊", Lang.AR),
-        Item("ج", "جيم. جمل", "جمل", "🐪", Lang.AR),
-        Item("ح", "حاء. حصان", "حصان", "🐴", Lang.AR),
-        Item("خ", "خاء. خروف", "خروف", "🐑", Lang.AR),
-        Item("د", "دال. دجاجة", "دجاجة", "🐔", Lang.AR),
-        Item("ذ", "ذال. ذرة", "ذرة", "🌽", Lang.AR),
-        Item("ر", "راء. رجل", "رجل", "👨", Lang.AR),
-        Item("ز", "زاي. زرافة", "زرافة", "🦒", Lang.AR),
-        Item("س", "سين. سمكة", "سمكة", "🐟", Lang.AR),
-        Item("ش", "شين. شمس", "شمس", "☀️", Lang.AR),
-        Item("ص", "صاد. صاروخ", "صاروخ", "🚀", Lang.AR),
-        Item("ض", "ضاد. ضفدع", "ضفدع", "🐸", Lang.AR),
-        Item("ط", "طاء. طائرة", "طائرة", "✈️", Lang.AR),
-        Item("ظ", "ظاء. ظرف", "ظرف", "✉️", Lang.AR),
-        Item("ع", "عين. عصفور", "عصفور", "🐦", Lang.AR),
-        Item("غ", "غين. غيمة", "غيمة", "☁️", Lang.AR),
-        Item("ف", "فاء. فيل", "فيل", "🐘", Lang.AR),
-        Item("ق", "قاف. قمر", "قمر", "🌙", Lang.AR),
-        Item("ك", "كاف. كتاب", "كتاب", "📖", Lang.AR),
-        Item("ل", "لام. ليمون", "ليمون", "🍋", Lang.AR),
-        Item("م", "ميم. موز", "موز", "🍌", Lang.AR),
-        Item("ن", "نون. نحلة", "نحلة", "🐝", Lang.AR),
-        Item("هـ", "هاء. هرم", "هرم", "🔺", Lang.AR),
-        Item("و", "واو. وردة", "وردة", "🌹", Lang.AR),
-        Item("ي", "ياء. يد", "يد", "✋", Lang.AR)
+        Item("أ", "أَلِف. أَرْنَب", "أَرْنَب", "🐰", Lang.AR),
+        Item("ب", "بَاء. بَطَّة", "بَطَّة", "🦆", Lang.AR),
+        Item("ت", "تَاء. تُفَّاحَة", "تُفَّاحَة", "🍎", Lang.AR),
+        Item("ث", "ثَاء. ثَعْلَب", "ثَعْلَب", "🦊", Lang.AR),
+        Item("ج", "جِيم. جَمَل", "جَمَل", "🐪", Lang.AR),
+        Item("ح", "حَاء. حِصَان", "حِصَان", "🐴", Lang.AR),
+        Item("خ", "خَاء. خَرُوف", "خَرُوف", "🐑", Lang.AR),
+        Item("د", "دَال. دَجَاجَة", "دَجَاجَة", "🐔", Lang.AR),
+        Item("ذ", "ذَال. ذُرَة", "ذُرَة", "🌽", Lang.AR),
+        Item("ر", "رَاء. رَجُل", "رَجُل", "👨", Lang.AR),
+        Item("ز", "زَاي. زَرَافَة", "زَرَافَة", "🦒", Lang.AR),
+        Item("س", "سِين. سَمَكَة", "سَمَكَة", "🐟", Lang.AR),
+        Item("ش", "شِين. شَمْس", "شَمْس", "☀️", Lang.AR),
+        Item("ص", "صَاد. صَارُوخ", "صَارُوخ", "🚀", Lang.AR),
+        Item("ض", "ضَاد. ضِفْدَع", "ضِفْدَع", "🐸", Lang.AR),
+        Item("ط", "طَاء. طَائِرَة", "طَائِرَة", "✈️", Lang.AR),
+        Item("ظ", "ظَاء. ظَرْف", "ظَرْف", "✉️", Lang.AR),
+        Item("ع", "عَيْن. عُصْفُور", "عُصْفُور", "🐦", Lang.AR),
+        Item("غ", "غَيْن. غَيْمَة", "غَيْمَة", "☁️", Lang.AR),
+        Item("ف", "فَاء. فِيل", "فِيل", "🐘", Lang.AR),
+        Item("ق", "قَاف. قَمَر", "قَمَر", "🌙", Lang.AR),
+        Item("ك", "كَاف. كِتَاب", "كِتَاب", "📖", Lang.AR),
+        Item("ل", "لَام. لَيْمُون", "لَيْمُون", "🍋", Lang.AR),
+        Item("م", "مِيم. مَوْز", "مَوْز", "🍌", Lang.AR),
+        Item("ن", "نُون. نَحْلَة", "نَحْلَة", "🐝", Lang.AR),
+        Item("هـ", "هَاء. هَرَم", "هَرَم", "🔺", Lang.AR),
+        Item("و", "وَاو. وَرْدَة", "وَرْدَة", "🌹", Lang.AR),
+        Item("ي", "يَاء. يَد", "يَد", "✋", Lang.AR)
     )
 
     private val frNumbers = listOf(
@@ -118,7 +122,7 @@ object Content {
     )
 
     private val arNumbers = listOf(
-        "صفر", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة", "عشرة"
+        "صِفْر", "وَاحِد", "اثْنَان", "ثَلَاثَة", "أَرْبَعَة", "خَمْسَة", "سِتَّة", "سَبْعَة", "ثَمَانِيَة", "تِسْعَة", "عَشَرَة"
     )
 
     private val enNumbers = listOf(
@@ -164,10 +168,10 @@ object Content {
 
     /** Mots d'encouragement. */
     val praiseFr = listOf("Bravo !", "Super !", "Génial !", "Tu es un champion !", "Bien joué !")
-    val praiseAr = listOf("أحسنت!", "رائع!", "ممتاز!", "برافو!", "عمل جميل!")
+    val praiseAr = listOf("أَحْسَنْتَ!", "رَائِع!", "مُمْتَاز!", "بَرَافُو!", "عَمَلٌ جَمِيل!")
     val praiseEn = listOf("Great job!", "Well done!", "Awesome!", "You are a champion!", "Super!")
     val retryFr = listOf("Essaie encore !", "Presque ! Réessaie !")
-    val retryAr = listOf("حاول مرة أخرى!", "قريب! جرّب ثانية!")
+    val retryAr = listOf("حَاوِلْ مَرَّةً أُخْرَى!", "قَرِيب! جَرِّبْ ثَانِيَةً!")
     val retryEn = listOf("Try again!", "Almost! Try again!")
 }
 
@@ -175,7 +179,7 @@ object Content {
 
 /** Ce qu'on dit quand l'enfant touche une lettre ou un chiffre (court, sans le mot-exemple). */
 fun Item.shortSpoken(): String = when {
-    emoji == NUMBER_EMOJI -> spoken
+    emoji == NUMBER_EMOJI || symbol == emoji -> spoken
     lang == Lang.AR -> spoken.substringBefore('.')
     else -> symbol
 }
@@ -247,21 +251,21 @@ object Stories {
 
     val ar = listOf(
         Story(
-            "الأرنب والحرف أ", "🐰", Lang.AR,
-            "برافو! انتهت القصة. الأرنب سعيد جدا!",
+            "الأَرْنَبُ وَالحَرْفُ أ", "🐰", Lang.AR,
+            "بَرَافُو! اِنْتَهَتِ القِصَّةُ. الأَرْنَبُ سَعِيدٌ جِدًّا!",
             listOf(
-                StoryStep("ضاع من الأرنب الصغير حرفه المفضل. ساعده ليجد حرف الألف!", "🐰", listOf("ب", "أ", "ت", "ث"), "أ"),
-                StoryStep("أحسنت! الأرنب جائع. جد معه الرقم ثلاثة!", "🥕", listOf("1", "5", "3", "7"), "3"),
-                StoryStep("الآن جد حرف الجيم، مثل جمل!", "🐪", listOf("ج", "ح", "خ", "د"), "ج")
+                StoryStep("ضَاعَ مِنَ الأَرْنَبِ الصَّغِيرِ حَرْفُهُ المُفَضَّلُ. سَاعِدْهُ لِيَجِدَ حَرْفَ الأَلِفِ!", "🐰", listOf("ب", "أ", "ت", "ث"), "أ"),
+                StoryStep("أَحْسَنْتَ! الأَرْنَبُ جَائِعٌ. اِبْحَثْ مَعَهُ عَنِ الرَّقْمِ ثَلَاثَة!", "🥕", listOf("1", "5", "3", "7"), "3"),
+                StoryStep("الآنَ اِبْحَثْ عَنْ حَرْفِ الجِيمِ، مِثْلَ جَمَل!", "🐪", listOf("ج", "ح", "خ", "د"), "ج")
             )
         ),
         Story(
-            "السمكة الصغيرة", "🐟", Lang.AR,
-            "برافو! السمكة سعيدة. أنت بطل!",
+            "السَّمَكَةُ الصَّغِيرَةُ", "🐟", Lang.AR,
+            "بَرَافُو! السَّمَكَةُ سَعِيدَةٌ. أَنْتَ بَطَل!",
             listOf(
-                StoryStep("السمكة الصغيرة تسبح في البحر. ساعدها لتجد الرقم اثنين!", "🐟", listOf("2", "4", "6", "9"), "2"),
-                StoryStep("رائع! الآن جد حرف السين، مثل سمكة!", "🐠", listOf("ش", "ص", "س", "ض"), "س"),
-                StoryStep("آخر خطوة! جد الرقم خمسة!", "🐚", listOf("7", "5", "8", "1"), "5")
+                StoryStep("السَّمَكَةُ الصَّغِيرَةُ تَسْبَحُ فِي البَحْرِ. سَاعِدْهَا لِتَجِدَ الرَّقْمَ اثْنَيْنِ!", "🐟", listOf("2", "4", "6", "9"), "2"),
+                StoryStep("رَائِع! الآنَ اِبْحَثْ عَنْ حَرْفِ السِّينِ، مِثْلَ سَمَكَة!", "🐠", listOf("ش", "ص", "س", "ض"), "س"),
+                StoryStep("آخِرُ خُطْوَة! اِبْحَثْ عَنِ الرَّقْمِ خَمْسَة!", "🐚", listOf("7", "5", "8", "1"), "5")
             )
         )
     )

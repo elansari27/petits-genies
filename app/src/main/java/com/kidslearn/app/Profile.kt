@@ -65,7 +65,7 @@ fun praiseNamed(lang: Lang, name: String): String {
     ).random()
     val ar = if (n.isEmpty()) Content.praiseAr.random()
     else listOf(
-        "أحسنت يا $n!", "رائع يا $n!", "ممتاز يا $n!", "أنت بطل يا $n!"
+        "أَحْسَنْتَ يَا $n!", "رَائِع يَا $n!", "مُمْتَاز يَا $n!", "أَنْتَ بَطَل يَا $n!"
     ).random()
     val en = if (n.isEmpty()) Content.praiseEn.random()
     else listOf(

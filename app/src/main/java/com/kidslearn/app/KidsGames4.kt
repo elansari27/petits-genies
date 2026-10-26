@@ -35,12 +35,12 @@ data class ColorItem(val fr: String, val ar: String, val value: Color)
 
 object KidColors {
     val all = listOf(
-        ColorItem("Rouge", "أحمر", Color(0xFFFF5252)),
-        ColorItem("Bleu", "أزرق", Color(0xFF1E90FF)),
-        ColorItem("Jaune", "أصفر", Color(0xFFFFC933)),
-        ColorItem("Vert", "أخضر", Color(0xFF2ED573)),
-        ColorItem("Violet", "بنفسجي", Color(0xFF6C4BFF)),
-        ColorItem("Orange", "برتقالي", Color(0xFFFF9F43))
+        ColorItem("Rouge", "أَحْمَر", Color(0xFFFF5252)),
+        ColorItem("Bleu", "أَزْرَق", Color(0xFF1E90FF)),
+        ColorItem("Jaune", "أَصْفَر", Color(0xFFFFC933)),
+        ColorItem("Vert", "أَخْضَر", Color(0xFF2ED573)),
+        ColorItem("Violet", "بَنَفْسَجِيّ", Color(0xFF6C4BFF)),
+        ColorItem("Orange", "بُرْتُقَالِيّ", Color(0xFFFF9F43))
     )
 }
 
@@ -50,10 +50,10 @@ data class ShapeItem(val fr: String, val ar: String, val kind: ShapeKind)
 
 object KidShapes {
     val all = listOf(
-        ShapeItem("le cercle", "الدائرة", ShapeKind.CIRCLE),
-        ShapeItem("le carré", "المربع", ShapeKind.SQUARE),
-        ShapeItem("le triangle", "المثلث", ShapeKind.TRIANGLE),
-        ShapeItem("l'étoile", "النجمة", ShapeKind.STAR)
+        ShapeItem("le cercle", "الدَّائِرَة", ShapeKind.CIRCLE),
+        ShapeItem("le carré", "المُرَبَّع", ShapeKind.SQUARE),
+        ShapeItem("le triangle", "المُثَلَّث", ShapeKind.TRIANGLE),
+        ShapeItem("l'étoile", "النَّجْمَة", ShapeKind.STAR)
     )
 }
 
@@ -120,7 +120,7 @@ fun ColorsGameScreen(
     var solved by remember(round) { mutableStateOf(false) }
     var feedback by remember(round) { mutableStateOf("") }
 
-    val question = t(lang, "Touche la couleur ${target.fr} !", "المس اللون ${target.ar} !")
+    val question = t(lang, "Touche la couleur ${target.fr} !", "المَسِ اللَّوْنَ ${target.ar}!")
 
     LaunchedEffect(round) {
         delay(300)
@@ -211,7 +211,7 @@ fun ShapesScreen(
     var solved by remember(round) { mutableStateOf(false) }
     var feedback by remember(round) { mutableStateOf("") }
 
-    val question = t(lang, "Touche ${target.fr} !", "المس ${target.ar} !")
+    val question = t(lang, "Touche ${target.fr} !", "المَسِ ${target.ar}!")
 
     LaunchedEffect(round) {
         delay(300)
@@ -299,7 +299,7 @@ fun MemoryScreen(
     var matched by remember(round) { mutableStateOf(setOf<String>()) }
     var firstPick by remember(round) { mutableStateOf<Int?>(null) }
     var lock by remember(round) { mutableStateOf(false) }
-    var feedback by remember(round) { mutableStateOf(t(lang, "Trouve les paires !", "جد الأزواج!")) }
+    var feedback by remember(round) { mutableStateOf(t(lang, "Trouve les paires !", "اِبْحَثْ عَنِ الأَزْوَاج!")) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(round) {
@@ -417,7 +417,7 @@ fun FirstLetterScreen(
         sound.speak(target.word, target.lang)
         delay(900)
         sound.speak(
-            t(lang, "Ça commence par quelle lettre ?", "بأي حرف يبدأ؟"),
+            t(lang, "Ça commence par quelle lettre ?", "بِأَيِّ حَرْفٍ يَبْدَأ؟"),
             target.lang
         )
     }
@@ -604,7 +604,7 @@ fun ParentScreen(
             } else {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "⭐ $balance    🏅 $stickersOwned/${Stickers.all.size}    🔥 $streak",
+                    "⭐ $balance    🏅 $stickersOwned/${Stickers.all.size}    🔥 $streak    v$APP_VERSION",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Purple

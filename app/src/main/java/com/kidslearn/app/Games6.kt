@@ -1,5 +1,15 @@
 package com.kidslearn.app
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -16,28 +26,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // =====================================================================
-//  Nouveaux jeux : Trouver l'intrus, Tri, Logique, Ombres (puzzle)
+//  Composants communs des jeux : cadre, tuile-réponse animée
 // =====================================================================
 
-/** Une catégorie d'objets, avec son nom dans chaque langue. */
-private class Cat(val fr: String, val ar: String, val en: String, val icon: String, val items: List<String>) {
-    fun name(lang: Lang) = t(lang, fr, ar, en)
-}
+/** Langue utilisée pour la voix (le mode MIX parle français pour les consignes). */
+fun speakLang(lang: Lang) = if (lang == Lang.MIX) Lang.FR else lang
 
-private val cats = listOf(
-    Cat("Animaux", "حيوانات", "Animals", "🐾", listOf("🐶", "🐱", "🐰", "🐻", "🐼", "🦁", "🐮", "🐷")),
-    Cat("Fruits", "فواكه", "Fruits", "🍎", listOf("🍎", "🍌", "🍇", "🍓", "🍊", "🍉", "🍐", "🍒")),
-    Cat("Transports", "مواصلات", "Vehicles", "🚗", listOf("🚗", "🚌", "🚲", "✈️", "🚂", "🚀", "🚁", "⛵")),
-    Cat("Nourriture", "طعام", "Food", "🍕", listOf("🍕", "🍔", "🍟", "🍦", "🍪", "🥕", "🍞", "🧀"))
-)
-
-private fun speakLang(lang: Lang) = if (lang == Lang.MIX) Lang.FR else lang
-
-/** Cadre commun : fond, barre du haut, consigne, retour d'information, confettis. */
+/** Cadre commun : décor, barre du haut, consigne (touchable pour la réécouter), retour d'information. */
 @Composable
-private fun GameShell(
+fun GameShell(
     title: String,
     prompt: String,
     message: String,
@@ -45,19 +45,27 @@ private fun GameShell(
     confetti: Boolean,
     stars: Int,
     onBack: () -> Unit,
+    onRepeat: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     GameBackground {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             TopBar(title = title, stars = stars, onBack = onBack)
-            Text(
-                prompt,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Purple,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(24.dp))
+                    .then(if (onRepeat != null) Modifier.clickable { onRepeat() } else Modifier)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    (if (onRepeat != null) "🔊 " else "") + prompt,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Purple,
+                    textAlign = TextAlign.Center
+                )
+            }
             Text(
                 message,
                 fontSize = 22.sp,
@@ -74,21 +82,72 @@ private fun GameShell(
     }
 }
 
-/** Grosse tuile de choix. [glow] met en évidence la bonne réponse après des erreurs (aide). */
+/**
+ * Grosse tuile de réponse animée : si c'est juste elle saute et se balance de joie,
+ * si c'est faux elle secoue la tête. [glow] fait pulser la bonne réponse (aide après 2 erreurs).
+ */
 @Composable
-private fun ChoiceTile(
+fun AnswerTile(
     modifier: Modifier,
     color: Color,
-    glow: Boolean,
-    onClick: () -> Unit,
+    correct: Boolean,
+    glow: Boolean = false,
+    enabled: Boolean = true,
+    onCorrect: () -> Unit,
+    onWrong: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    BouncyBox(
-        modifier = modifier,
-        color = if (glow) Yellow else color,
-        shape = RoundedCornerShape(32.dp),
-        onClick = onClick
-    ) { content() }
+    val scope = rememberCoroutineScope()
+    val dx = remember { Animatable(0f) }
+    val pop = remember { Animatable(1f) }
+    val rot = remember { Animatable(0f) }
+    val tr = rememberInfiniteTransition(label = "glow")
+    val pulse by tr.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(tween(450), RepeatMode.Reverse),
+        label = "pulse"
+    )
+    Box(
+        modifier.graphicsLayer {
+            translationX = dx.value
+            val s = pop.value * (if (glow) pulse else 1f)
+            scaleX = s
+            scaleY = s
+            rotationZ = rot.value
+        }
+    ) {
+        BouncyBox(
+            modifier = Modifier.fillMaxSize(),
+            color = if (glow) Yellow else color,
+            shape = RoundedCornerShape(32.dp),
+            onClick = {
+                if (enabled) {
+                    if (correct) {
+                        scope.launch {
+                            pop.animateTo(1.25f, tween(150))
+                            pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                        }
+                        scope.launch {
+                            rot.animateTo(8f, tween(110))
+                            rot.animateTo(-8f, tween(110))
+                            rot.animateTo(0f, tween(110))
+                        }
+                        onCorrect()
+                    } else {
+                        scope.launch {
+                            for (i in 0 until 3) {
+                                dx.animateTo(16f, tween(60))
+                                dx.animateTo(-16f, tween(60))
+                            }
+                            dx.animateTo(0f, tween(50))
+                        }
+                        onWrong()
+                    }
+                }
+            }
+        ) { content() }
+    }
 }
 
 // ---------- Trouver l'intrus ----------
@@ -100,120 +159,52 @@ fun OddOneOutScreen(
 ) {
     var round by remember { mutableIntStateOf(0) }
     val setup = remember(round) {
-        val two = cats.shuffled().take(2)
-        val main = two[0]; val other = two[1]
-        val tiles = (main.items.shuffled().take(2) + other.items.random()).shuffled()
-        Triple(tiles, tiles.first { it in other.items && it !in main.items }, main)
+        val two = Things.families.shuffled().take(2)
+        val oddThing = two[1].things.random()
+        val tiles = (two[0].things.shuffled().take(2) + oddThing).shuffled()
+        Pair(tiles, oddThing)
     }
-    val (tiles, odd, _) = setup
+    val (tiles, odd) = setup
     var wrongs by remember(round) { mutableIntStateOf(0) }
     var found by remember(round) { mutableStateOf(false) }
     var message by remember(round) { mutableStateOf("") }
-    val ask = t(lang, "Trouve l'intrus !", "جد الغريب!", "Find the odd one out!")
+    val ask = t(lang, "Trouve l'intrus !", "اِبْحَثْ عَنِ الغَرِيب!", "Find the odd one out!")
     val sl = speakLang(lang)
 
     LaunchedEffect(round) { delay(400); sound.speak(ask, sl) }
     LaunchedEffect(found) {
         if (found) {
             val p = praiseNamed(lang, childName)
-            sound.playSuccess(); sound.speak(p, sl); onStar()
-            delay(2300); round += 1
+            sound.playSuccess(); sound.speak(p + " " + odd.name(sl), sl); onStar()
+            delay(2600); round += 1
         }
     }
 
     GameShell(
-        t(lang, "L'intrus", "الغريب", "Odd one out"), ask, message, found, found, stars, onBack
+        t(lang, "L'intrus", "الغَرِيب", "Odd one out"), ask, message, found, found, stars, onBack,
+        onRepeat = { sound.speak(ask, sl) }
     ) {
         Row(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            tiles.forEachIndexed { i, e ->
-                ChoiceTile(
-                    modifier = Modifier.weight(1f).height(160.dp),
+            tiles.forEachIndexed { i, th ->
+                AnswerTile(
+                    modifier = Modifier.weight(1f).height(170.dp),
                     color = tileColors[i % tileColors.size],
-                    glow = wrongs >= 2 && !found && e == odd,
-                    onClick = {
-                        if (!found) {
-                            if (e == odd) { found = true; message = "🎉 " + praise(lang) }
-                            else {
-                                wrongs += 1; sound.playError()
-                                message = retry(lang); sound.speak(message, sl)
-                            }
-                        }
+                    correct = th === odd,
+                    glow = wrongs >= 2 && !found && th === odd,
+                    enabled = !found,
+                    onCorrect = { found = true; message = "🎉 " + praise(lang) },
+                    onWrong = {
+                        wrongs += 1; sound.playError()
+                        message = retry(lang); sound.speak(message, sl)
                     }
-                ) { Text(e, fontSize = 64.sp) }
+                ) { Text(th.emoji, fontSize = 64.sp) }
             }
         }
-        Spacer(Modifier.height(40.dp))
-    }
-}
-
-// ---------- Tri : à quelle famille appartient l'objet ? ----------
-
-@Composable
-fun SortScreen(
-    lang: Lang, sound: SoundManager, stars: Int, childName: String = "",
-    onStar: () -> Unit, onBack: () -> Unit
-) {
-    var round by remember { mutableIntStateOf(0) }
-    val pair = remember(round / 4) { cats.shuffled().take(2) }
-    val item = remember(round) {
-        val c = pair.random()
-        c to c.items.random()
-    }
-    var wrongs by remember(round) { mutableIntStateOf(0) }
-    var found by remember(round) { mutableStateOf(false) }
-    var message by remember(round) { mutableStateOf("") }
-    val ask = t(lang, "Dans quel panier va-t-il ?", "في أي سلة يذهب؟", "Which basket does it go in?")
-    val sl = speakLang(lang)
-
-    LaunchedEffect(round) { delay(400); sound.speak(ask, sl) }
-    LaunchedEffect(found) {
-        if (found) {
-            val p = praiseNamed(lang, childName)
-            sound.playSuccess(); sound.speak(p, sl); onStar()
-            delay(1800); round += 1
-        }
-    }
-
-    GameShell(t(lang, "Le tri", "الفرز", "Sorting"), ask, message, found, found, stars, onBack) {
-        Box(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) { Text(item.second, fontSize = 130.sp) }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            pair.forEachIndexed { i, c ->
-                ChoiceTile(
-                    modifier = Modifier.weight(1f).height(150.dp),
-                    color = if (i == 0) Blue else Orange,
-                    glow = wrongs >= 2 && !found && c === item.first,
-                    onClick = {
-                        if (!found) {
-                            if (c === item.first) { found = true; message = "🎉 " + praise(lang) }
-                            else {
-                                wrongs += 1; sound.playError()
-                                message = retry(lang); sound.speak(message, sl)
-                            }
-                        }
-                    }
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("🧺", fontSize = 48.sp)
-                        Text(c.icon, fontSize = 32.sp)
-                        Text(c.name(lang), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(48.dp))
     }
 }
 
@@ -235,7 +226,7 @@ fun LogicScreen(
             1 -> listOf(a, a, b, a, a)
             else -> listOf(a, b, c, a, b)
         }
-        val answer = when (round % 3) { 0 -> b; 1 -> b; else -> c }
+        val answer = if (round % 3 == 2) c else b
         val choices = (listOf(answer) + syms.filter { it != answer }.take(2)).shuffled()
         Triple(seq, answer, choices)
     }
@@ -243,7 +234,7 @@ fun LogicScreen(
     var wrongs by remember(round) { mutableIntStateOf(0) }
     var found by remember(round) { mutableStateOf(false) }
     var message by remember(round) { mutableStateOf("") }
-    val ask = t(lang, "Qu'est-ce qui vient après ?", "ماذا يأتي بعد ذلك؟", "What comes next?")
+    val ask = t(lang, "Qu'est-ce qui vient après ?", "مَاذَا يَأْتِي بَعْدَ ذَلِك؟", "What comes next?")
     val sl = speakLang(lang)
 
     LaunchedEffect(round) { delay(400); sound.speak(ask, sl) }
@@ -255,7 +246,10 @@ fun LogicScreen(
         }
     }
 
-    GameShell(t(lang, "Logique", "المنطق", "Logic"), ask, message, found, found, stars, onBack) {
+    GameShell(
+        t(lang, "Logique", "المَنْطِق", "Logic"), ask, message, found, found, stars, onBack,
+        onRepeat = { sound.speak(ask, sl) }
+    ) {
         Row(
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
@@ -269,27 +263,25 @@ fun LogicScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             choices.forEachIndexed { i, e ->
-                ChoiceTile(
+                AnswerTile(
                     modifier = Modifier.weight(1f).height(130.dp),
                     color = tileColors[i % tileColors.size],
+                    correct = e == answer,
                     glow = wrongs >= 2 && !found && e == answer,
-                    onClick = {
-                        if (!found) {
-                            if (e == answer) { found = true; message = "🎉 " + praise(lang) }
-                            else {
-                                wrongs += 1; sound.playError()
-                                message = retry(lang); sound.speak(message, sl)
-                            }
-                        }
+                    enabled = !found,
+                    onCorrect = { found = true; message = "🎉 " + praise(lang) },
+                    onWrong = {
+                        wrongs += 1; sound.playError()
+                        message = retry(lang); sound.speak(message, sl)
                     }
                 ) { Text(e, fontSize = 56.sp) }
             }
         }
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(48.dp))
     }
 }
 
-// ---------- Ombres : quelle est cette ombre ? ----------
+// ---------- Ombres : à qui est cette ombre ? ----------
 
 @Composable
 fun ShadowScreen(
@@ -298,7 +290,7 @@ fun ShadowScreen(
 ) {
     var round by remember { mutableIntStateOf(0) }
     val setup = remember(round) {
-        val all = cats.flatMap { it.items }.distinct().shuffled()
+        val all = Things.all.shuffled()
         val answer = all[0]
         Pair(answer, (listOf(answer) + all.drop(1).take(2)).shuffled())
     }
@@ -306,50 +298,55 @@ fun ShadowScreen(
     var wrongs by remember(round) { mutableIntStateOf(0) }
     var found by remember(round) { mutableStateOf(false) }
     var message by remember(round) { mutableStateOf("") }
-    val ask = t(lang, "À qui est cette ombre ?", "لمن هذا الظل؟", "Whose shadow is this?")
+    val ask = t(lang, "À qui est cette ombre ?", "لِمَنْ هَذَا الظِّلّ؟", "Whose shadow is this?")
     val sl = speakLang(lang)
+    val reveal = remember { Animatable(0f) }
 
-    LaunchedEffect(round) { delay(400); sound.speak(ask, sl) }
+    LaunchedEffect(round) { reveal.snapTo(0f); delay(400); sound.speak(ask, sl) }
     LaunchedEffect(found) {
         if (found) {
+            reveal.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
             val p = praiseNamed(lang, childName)
-            sound.playSuccess(); sound.speak(p, sl); onStar()
-            delay(2200); round += 1
+            sound.playSuccess(); sound.speak(p + " " + answer.name(sl), sl); onStar()
+            delay(2600); round += 1
         }
     }
 
-    GameShell(t(lang, "Les ombres", "الظلال", "Shadows"), ask, message, found, found, stars, onBack) {
+    GameShell(
+        t(lang, "Les ombres", "الظِّلَال", "Shadows"), ask, message, found, found, stars, onBack,
+        onRepeat = { sound.speak(ask, sl) }
+    ) {
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             // L'emoji est peint en noir (mode SrcIn) tant que l'enfant n'a pas trouvé
-            val shadowMod = if (found) Modifier else Modifier
+            val shadowMod = if (found) Modifier.graphicsLayer {
+                scaleX = 1f + 0.2f * (1f - reveal.value); scaleY = scaleX
+            } else Modifier
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
                     drawRect(Color(0xFF2B2A5E), blendMode = BlendMode.SrcIn)
                 }
-            Text(answer, fontSize = 150.sp, modifier = shadowMod)
+            Text(answer.emoji, fontSize = 150.sp, modifier = shadowMod)
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            choices.forEachIndexed { i, e ->
-                ChoiceTile(
+            choices.forEachIndexed { i, th ->
+                AnswerTile(
                     modifier = Modifier.weight(1f).height(130.dp),
                     color = tileColors[i % tileColors.size],
-                    glow = wrongs >= 2 && !found && e == answer,
-                    onClick = {
-                        if (!found) {
-                            if (e == answer) { found = true; message = "🎉 " + praise(lang) }
-                            else {
-                                wrongs += 1; sound.playError()
-                                message = retry(lang); sound.speak(message, sl)
-                            }
-                        }
+                    correct = th === answer,
+                    glow = wrongs >= 2 && !found && th === answer,
+                    enabled = !found,
+                    onCorrect = { found = true; message = "🎉 " + praise(lang) },
+                    onWrong = {
+                        wrongs += 1; sound.playError()
+                        message = retry(lang); sound.speak(message, sl)
                     }
-                ) { Text(e, fontSize = 56.sp) }
+                ) { Text(th.emoji, fontSize = 56.sp) }
             }
         }
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(48.dp))
     }
 }

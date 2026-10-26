@@ -91,7 +91,13 @@ import kotlinx.coroutines.launch
 //  1. TRACER : suivre la lettre ou le chiffre avec le doigt
 // =====================================================================
 
-private class GlyphData(val image: ImageBitmap, val targets: List<Offset>, val step: Int)
+private class GlyphData(
+    val image: ImageBitmap,
+    val targets: List<Offset>,
+    val step: Int,
+    val cell: IntArray,      // case (grille 5x5) de chaque point
+    val cellTotal: IntArray  // nombre de points par case
+)
 
 /** Dessine le symbole dans une image et repère des points à "colorier" avec le doigt. */
 private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? {
@@ -100,7 +106,7 @@ private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? 
     val canvas = android.graphics.Canvas(bmp)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     paint.color = android.graphics.Color.WHITE
-    paint.typeface = Typeface.DEFAULT_BOLD
+    paint.typeface = Typeface.DEFAULT // trait fin : il faut vraiment suivre la forme
     paint.textAlign = Paint.Align.CENTER
     paint.textSize = size.height * 0.72f
     val textWidth = paint.measureText(text)
@@ -116,7 +122,7 @@ private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? 
     bmp.getPixels(pixels, 0, w, 0, 0, w, h)
     // Pas de grille adapté à la taille du symbole ; on le réduit tant qu'il y a trop peu de points
     // (lettres fines en arabe) pour que le tracé ne reste jamais "bloqué".
-    var step = (size.height * 0.05f).toInt().coerceAtLeast((8 * density).toInt()).coerceAtLeast(6)
+    var step = (size.height * 0.035f).toInt().coerceAtLeast((4 * density).toInt()).coerceAtLeast(5)
     var points = ArrayList<Offset>()
     while (true) {
         points = ArrayList()
@@ -129,10 +135,28 @@ private fun buildGlyph(text: String, size: IntSize, density: Float): GlyphData? 
             }
             y += step
         }
-        if (points.size >= 14 || step <= 4) break
-        step = (step * 0.75f).toInt().coerceAtLeast(4)
+        if (points.size >= 40 || step <= 3) break
+        step = (step * 0.75f).toInt().coerceAtLeast(3)
     }
-    return GlyphData(bmp.asImageBitmap(), points, step)
+    // Grille 5x5 sur la boîte englobante : chaque partie du symbole (points du ب, barre du 4...)
+    // devra avoir été visitée avant le « Bravo ».
+    var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE
+    var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
+    for (p in points) {
+        minX = minOf(minX, p.x); maxX = maxOf(maxX, p.x)
+        minY = minOf(minY, p.y); maxY = maxOf(maxY, p.y)
+    }
+    val gw = (maxX - minX).coerceAtLeast(1f)
+    val gh = (maxY - minY).coerceAtLeast(1f)
+    val cell = IntArray(points.size)
+    val cellTotal = IntArray(25)
+    for (i in points.indices) {
+        val cx = (((points[i].x - minX) / gw) * 4.999f).toInt().coerceIn(0, 4)
+        val cy = (((points[i].y - minY) / gh) * 4.999f).toInt().coerceIn(0, 4)
+        cell[i] = cy * 5 + cx
+        cellTotal[cell[i]]++
+    }
+    return GlyphData(bmp.asImageBitmap(), points, step, cell, cellTotal)
 }
 
 private val rainbow = listOf(Pink, Orange, Yellow, Green, Blue, Purple)
@@ -175,34 +199,21 @@ fun TraceScreen(
     var count by remember(glyph) { mutableIntStateOf(0) }
     var done by remember(index) { mutableStateOf(false) }
     val trail = remember { mutableStateListOf<Offset>() }
-    // Le doigt doit VRAIMENT passer sur le trait : rayon de prise = un peu plus qu'un pas de grille
-    // (avant : 30 dp = un seul coup de doigt couvrait la moitié de la lettre -> "Bravo" trop tôt).
-    val hitRadius = if (glyph == null) 0f else maxOf(glyph.step * 1.15f, 12f * density)
+    // Règle stricte du « Bravo » : le doigt doit passer sur le trait (rayon ~ épaisseur du trait),
+    // couvrir au moins 90 % des points ET visiter chaque partie du symbole (grille 5x5).
+    val hitRadius = maxOf(canvasSize.height * 0.045f, 14f * density)
     val total = glyph?.targets?.size ?: 0
     val needed = if (glyph == null) Int.MAX_VALUE
-    else ((total * 0.85f).toInt().coerceAtLeast(8)).coerceAtMost(total)
-    // Étendue du tracé : le doigt doit avoir parcouru l'essentiel de la hauteur ET de la largeur du symbole
-    // (sauf pour les symboles étroits comme 1 ou ا, où la largeur n'est pas exigée).
-    fun spreadOk(): Boolean {
+    else ((total * 0.90f).toInt().coerceAtLeast(10)).coerceAtMost(total)
+    val cellCovered = remember(glyph) { IntArray(25) }
+
+    fun allPartsVisited(): Boolean {
         val g = glyph ?: return false
-        if (g.targets.isEmpty()) return false
-        var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE
-        var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
-        var cMinX = Float.MAX_VALUE; var cMaxX = -Float.MAX_VALUE
-        var cMinY = Float.MAX_VALUE; var cMaxY = -Float.MAX_VALUE
-        for (i in g.targets.indices) {
-            val o = g.targets[i]
-            minX = minOf(minX, o.x); maxX = maxOf(maxX, o.x)
-            minY = minOf(minY, o.y); maxY = maxOf(maxY, o.y)
-            if (covered[i]) {
-                cMinX = minOf(cMinX, o.x); cMaxX = maxOf(cMaxX, o.x)
-                cMinY = minOf(cMinY, o.y); cMaxY = maxOf(cMaxY, o.y)
-            }
+        for (c in 0 until 25) {
+            val tot = g.cellTotal[c]
+            if (tot >= 3 && cellCovered[c] < tot * 0.6f) return false
         }
-        if (cMinX > cMaxX) return false
-        val wOk = (maxX - minX) < g.step * 3 || (cMaxX - cMinX) >= (maxX - minX) * 0.75f
-        val hOk = (maxY - minY) < g.step * 3 || (cMaxY - cMinY) >= (maxY - minY) * 0.75f
-        return wOk && hOk
+        return true
     }
 
     fun touch(p: Offset) {
@@ -214,15 +225,16 @@ fun TraceScreen(
         for (i in g.targets.indices) {
             if (!covered[i] && (g.targets[i] - p).getDistance() < hitRadius) {
                 covered[i] = true
+                cellCovered[g.cell[i]]++
                 gained++
             }
         }
         if (gained > 0) {
             val before = count
             count += gained
-            if (count / 8 != before / 8) sound.playStar()
+            if (count / 12 != before / 12) sound.playStar()
         }
-        if (!done && count >= needed && spreadOk()) done = true
+        if (!done && count >= needed && allPartsVisited()) done = true
     }
 
     LaunchedEffect(done) {
@@ -237,7 +249,7 @@ fun TraceScreen(
 
     GameBackground {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            TopBar(title = t(lang, "Trace avec ton doigt", "ارسم بإصبعك"), stars = stars, onBack = onBack)
+            TopBar(title = t(lang, "Trace avec ton doigt", "ارْسُمْ بِإِصْبَعِكَ", "Trace with your finger"), stars = stars, onBack = onBack)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -327,176 +339,6 @@ fun TraceScreen(
                         index = (index + 1) % items.size
                     }
                 ) { Text(if (rtl) "⬅️" else "➡️", fontSize = 32.sp) }
-            }
-        }
-    }
-}
-
-// =====================================================================
-//  2. ASSOCIER : glisser la lettre sur la bonne image
-// =====================================================================
-
-@Composable
-fun MatchScreen(
-    lang: Lang,
-    sound: SoundManager,
-    stars: Int,
-    onStar: () -> Unit,
-    onBack: () -> Unit
-) {
-    val pool = remember(lang) { Content.letters(lang) }
-    var round by remember { mutableIntStateOf(0) }
-    val target = remember(round) { pool.random() }
-    val options = remember(round) {
-        val others = pool.filter { it.emoji != target.emoji }
-            .distinctBy { it.emoji }
-            .shuffled()
-            .take(2)
-        (others + target).shuffled()
-    }
-    var solved by remember(round) { mutableStateOf(false) }
-    var feedback by remember(round) { mutableStateOf("") }
-    var dx by remember(round) { mutableFloatStateOf(0f) }
-    var dy by remember(round) { mutableFloatStateOf(0f) }
-    var letterRect by remember(round) { mutableStateOf(Rect.Zero) }
-    var hover by remember(round) { mutableIntStateOf(-1) }
-    val rects = remember(round) { HashMap<Int, Rect>() }
-    val scope = rememberCoroutineScope()
-
-    fun hitIndex(): Int {
-        val c = letterRect.center
-        for ((i, r) in rects) if (r.contains(c)) return i
-        return -1
-    }
-
-    fun springBack() {
-        val sx = dx
-        val sy = dy
-        scope.launch {
-            Animatable(sx).animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { dx = value }
-        }
-        scope.launch {
-            Animatable(sy).animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { dy = value }
-        }
-    }
-
-    fun drop() {
-        if (solved) return
-        val hit = hitIndex()
-        hover = -1
-        if (hit >= 0 && options[hit].emoji == target.emoji) {
-            solved = true
-            feedback = "🎉 ${praise(lang)}"
-            sound.playSuccess()
-            sound.speak(target.spoken, target.lang)
-            onStar()
-        } else {
-            if (hit >= 0) {
-                feedback = retry(lang)
-                sound.playError()
-            }
-            springBack()
-        }
-    }
-
-    LaunchedEffect(round) {
-        delay(300)
-        sound.speak(target.shortSpoken(), target.lang)
-    }
-    LaunchedEffect(solved) {
-        if (solved) {
-            delay(2200)
-            round += 1
-        }
-    }
-
-    GameBackground {
-        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            TopBar(title = t(lang, "Associe !", "اربط!"), stars = stars, onBack = onBack)
-            Text(
-                t(lang, "Glisse la lettre sur la bonne image", "اسحب الحرف إلى الصورة الصحيحة"),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Purple,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Spacer(Modifier.height(20.dp))
-            Box(
-                modifier = Modifier
-                    .zIndex(1f)
-                    .offset { IntOffset(dx.roundToInt(), dy.roundToInt()) }
-                    .size(130.dp)
-                    .onGloballyPositioned { letterRect = it.boundsInRoot() }
-                    .alpha(if (solved) 0f else 1f)
-                    .background(Purple, RoundedCornerShape(32.dp))
-                    .pointerInput(round) {
-                        detectDragGestures(
-                            onDragStart = { sound.playClick() },
-                            onDrag = { change, drag ->
-                                change.consume()
-                                if (!solved) {
-                                    dx += drag.x
-                                    dy += drag.y
-                                    hover = hitIndex()
-                                }
-                            },
-                            onDragEnd = { drop() },
-                            onDragCancel = {
-                                hover = -1
-                                springBack()
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(target.symbol, fontSize = 80.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-            }
-            Spacer(Modifier.weight(1f))
-            Text(
-                feedback,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (solved) Green else Pink,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.height(40.dp)
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 48.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                options.forEachIndexed { i, o ->
-                    val ok = solved && o.emoji == target.emoji
-                    Box(
-                        modifier = Modifier
-                            .size(104.dp)
-                            .graphicsLayer {
-                                val s = if (hover == i) 1.15f else 1f
-                                scaleX = s
-                                scaleY = s
-                            }
-                            .onGloballyPositioned { rects[i] = it.boundsInRoot() }
-                            .background(
-                                when {
-                                    ok -> Green
-                                    hover == i -> Yellow
-                                    else -> Color.White
-                                },
-                                RoundedCornerShape(28.dp)
-                            )
-                            .border(3.dp, Purple.copy(alpha = 0.35f), RoundedCornerShape(28.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(o.emoji, fontSize = 52.sp)
-                            if (ok) {
-                                Text(target.symbol, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                            }
-                        }
-                    }
-                }
             }
         }
     }
@@ -762,7 +604,7 @@ fun TreasureScreen(
         val names = targets.joinToString(", ") { it.shortSpoken() }
         when (lang) {
             Lang.FR -> sound.speak("Trouve : $names", Lang.FR)
-            Lang.AR -> sound.speak("جد: $names", Lang.AR)
+            Lang.AR -> sound.speak("اِبْحَثْ عَنْ: $names", Lang.AR)
             Lang.EN -> sound.speak("Find: $names", Lang.EN)
             Lang.MIX -> sound.speak("Trouve les trois lettres !", Lang.FR)
         }
@@ -871,7 +713,7 @@ fun TreasureScreen(
             } else {
                 Spacer(Modifier.weight(1f))
                 Text(
-                    if (phase == Phase.WIN) "🎉 ${t(lang, "Bravo ! Tout trouvé !", "برافو! وجدت كل شيء!")}"
+                    if (phase == Phase.WIN) "🎉 ${t(lang, "Bravo ! Tout trouvé !", "بَرَافُو! وَجَدْتَ كُلَّ شَيْء!")}"
                     else "🚀 ${t(lang, "La fusée est partie ! On réessaie ?", "انطلقت الصاروخ! نحاول مرة أخرى؟")}",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,

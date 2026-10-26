@@ -105,23 +105,17 @@ fun BouncyBox(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "press"
     )
+    // Apparition en rebondissant (toutes les tuiles de l'application)
+    val appear = remember { Animatable(0.6f) }
+    LaunchedEffect(Unit) {
+        appear.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+    }
     Box(
         modifier = modifier
-            .scale(scale)
+            .scale(scale * appear.value)
             .background(color, shape)
             .clickable(interactionSource = source, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
-    ) { content() }
-}
-
-@Composable
-fun GameBackground(content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFF4E0), Color(0xFFFFE0F0))))
-            .statusBarsPadding()
-            .navigationBarsPadding()
     ) { content() }
 }
 
@@ -189,12 +183,14 @@ fun HomeScreen(
     sound: SoundManager,
     musicOn: Boolean,
     onToggleMusic: () -> Unit,
+    buddy: String,
+    onPickBuddy: (String) -> Unit,
     onPickLang: (Lang) -> Unit
 ) {
     LaunchedEffect(Unit) {
         sound.speak("Salut $childName ! Bienvenue chez Petits Génies !", Lang.FR)
     }
-    GameBackground {
+    GameBackground(buddy = false) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -249,7 +245,10 @@ fun HomeScreen(
                 fontWeight = FontWeight.ExtraBold,
                 color = Pink
             )
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(10.dp))
+            Text("🐾  Mon ami  /  صديقي  /  My buddy", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Purple)
+            BuddyPicker(buddy, onPickBuddy)
+            Spacer(Modifier.height(14.dp))
 
             val options = listOf(
                 Triple(Lang.FR, "🇫🇷  Français", Blue),
@@ -312,6 +311,10 @@ fun MenuScreen(
         MenuEntry(Screen.SORT, "🧺", t(lang, "Tri", "الفرز")),
         MenuEntry(Screen.LOGIC, "🧠", t(lang, "Logique", "المنطق")),
         MenuEntry(Screen.SHADOW, "🌑", t(lang, "Puzzles : ombres", "ألغاز الظلال")),
+        MenuEntry(Screen.ANIM_LEARN, "🦁", t(lang, "Les animaux", "الحَيَوَانَات")),
+        MenuEntry(Screen.ANIM_QUIZ, "🐾", t(lang, "Écoute les animaux", "اِسْمَعِ الحَيَوَانَات")),
+        MenuEntry(Screen.HALVES, "🧩", t(lang, "Moitié-moitié", "نِصْف وَنِصْف")),
+        MenuEntry(Screen.HIDE_ANIMALS, "🐵", t(lang, "Cache-cache animaux", "غُمَّيْضَة الحَيَوَانَات")),
         MenuEntry(Screen.HIDE_LETTERS, "🙈", t(lang, "Cache-cache lettres", "غميضة الحروف")),
         MenuEntry(Screen.HIDE_NUMBERS, "🙉", t(lang, "Cache-cache chiffres", "غميضة الأرقام")),
         MenuEntry(Screen.QUIZ_LETTERS, "🎯", t(lang, "Écoute les lettres", "اسمع الحروف")),
@@ -326,9 +329,27 @@ fun MenuScreen(
         MenuEntry(Screen.PARENTS, "👨‍👩‍👧", t(lang, "Zone parents", "منطقة الآباء"))
     )
     val ctx = LocalContext.current
-    GameBackground {
+    GameBackground(buddy = false) {
         Column(Modifier.fillMaxSize()) {
-            TopBar(title = t(lang, "On joue !", "هيا نلعب!"), stars = stars, onBack = onBack)
+            TopBar(title = t(lang, "On joue !", "هَيَّا نَلْعَب!"), stars = stars, onBack = onBack)
+            // Bouton « Jouer » : l'appli choisit les jeux au hasard et les change régulièrement
+            BouncyBox(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(76.dp),
+                color = Green,
+                shape = RoundedCornerShape(38.dp),
+                onClick = { onPick(Screen.AUTO) }
+            ) {
+                Text(
+                    "🎲  " + t(lang, "Jouer ! (surprise)", "العَب! (مُفَاجَأَة)", "Play! (surprise)"),
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
             if ((lang == Lang.AR || lang == Lang.MIX) && !sound.arabicOk) {
                 Box(
                     modifier = Modifier
@@ -452,7 +473,7 @@ fun LearnScreen(
                     if (isArabicLetter(item.symbol)) {
                         ArabicForms(item.symbol)
                     }
-                    Mascot(item.emoji, 72)
+                    if (item.symbol != item.emoji) Mascot(item.emoji, 72)
                     Text(
                         item.word,
                         fontSize = 32.sp,
@@ -679,7 +700,7 @@ fun CountScreen(
     var feedback by remember(round) { mutableStateOf("") }
 
     val question = when (roundLang) {
-        Lang.AR -> "كم عددها؟"
+        Lang.AR -> "كَمْ عَدَدُهَا؟"
         Lang.EN -> "How many are there?"
         else -> "Combien y en a-t-il ?"
     }

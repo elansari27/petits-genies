@@ -11,6 +11,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlin.concurrent.thread
@@ -29,6 +30,16 @@ class SoundManager(context: Context) {
     private val appContext = context.applicationContext
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+
+    /** Dernière phrase dite (affichée dans la bulle du compagnon) + compteurs d'événements. */
+    var lastSpoken by mutableStateOf("")
+        private set
+    var spokeTick by mutableIntStateOf(0)
+        private set
+    var cheerTick by mutableIntStateOf(0)
+        private set
+    var oopsTick by mutableIntStateOf(0)
+        private set
 
     /** Faux si la voix arabe n'est pas installée sur le téléphone. */
     var arabicOk by mutableStateOf(true)
@@ -150,6 +161,8 @@ class SoundManager(context: Context) {
      * [lang] indique la langue voulue ; en mode MIX le français sert pour le latin.
      */
     fun speak(text: String, lang: Lang) {
+        lastSpoken = text.replace('\n', ' ')
+        spokeTick++
         if (!ttsReady) return
         val engine = tts ?: return
         val segs = splitSegments(text, lang)
@@ -240,11 +253,13 @@ class SoundManager(context: Context) {
     }
 
     fun playSuccess() {
+        cheerTick++
         vibrate(35)
         playNotes(listOf(523.25 to 110, 659.25 to 110, 783.99 to 110, 1046.5 to 220))
     }
 
     fun playError() {
+        oopsTick++
         vibrate(40)
         playNotes(listOf(330.0 to 140, 262.0 to 220))
     }
